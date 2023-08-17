@@ -3,6 +3,7 @@ const { Contract, Provider } = require('ethers-multicall');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const config = require('./.config.json');
+const contractAddresses = require('./contracts.json');
 const abi = require('./abi.json');
 
 const erc20Abi = require('./erc20Abi.json');
@@ -12,7 +13,6 @@ const snap = require('./snap.js');
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
 
 var curveGauges = require('./gauges.json');
-const { format } = require('path');
 
 var shot;
 
@@ -27,12 +27,12 @@ var round = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
 // Initialize providers and contracts (single and multicall)
 
 for (i in config.providers) {
-    if (config.providers[i] == "" || config.contracts[i] == "") continue;
+    if (config.providers[i] == "" || contractAddresses[i] == "") continue;
     try {
         providers[i] = new ethers.providers.JsonRpcProvider(config.providers[i]);
         mProviders[i] = new Provider(providers[i]);
-        contracts[i] = new ethers.Contract(config.contracts[i], abi, providers[i]);
-        mContracts[i] = new Contract(config.contracts[i], abi);
+        contracts[i] = new ethers.Contract(contractAddresses[i], abi, providers[i]);
+        mContracts[i] = new Contract(contractAddresses[i], abi);
     } catch (e) {
         console.log("Error: " + e);
         console.log("Could not connect to " + i);
@@ -211,7 +211,9 @@ async function _getIncentivesByUser(network, user) {
         console.log("Could not get user incentives for " + user + " " + network);
         return null;
     }
-    return userIncentives;
+    var val = {};
+    val[network] = userIncentives;
+    return val;
 }
 
 async function _getProposals(query) {
@@ -422,5 +424,18 @@ module.exports = {
             formatted[ethers.utils.getAddress(i)] = call[i].usd;
         }
         return formatted;
+    },
+    getIncentivesByUser: async function (user) {
+        var promises = [];
+        for (i in providers) {
+            promises.push(_getIncentivesByUser(i, user));
+        }
+        var results = await Promise.all(promises);
+        var incentives = {};
+        for(i in results) {
+            incentives[Object.keys(results[i])[0]] = results[i][Object.keys(results[i])[0]];
+        }
+        return incentives;
     }
+
 }
