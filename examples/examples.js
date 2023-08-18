@@ -19,7 +19,10 @@ async function examples() {
     // Returns deposits from a specific user
     ids = await votium.getIncentivesByUser("0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
     console.log("Ids for depositor 0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
-    console.log(ids);
+    for(r in ids) {
+        console.log(r);
+        console.log(ids[r]);
+    }
 
     // There are two methods for fetching incentives for a given round
     // Both functions accomplish the same goal but developers may have a preference for how a round is called
