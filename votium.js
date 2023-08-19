@@ -1,6 +1,9 @@
 // outside libraries
 const { ethers } = require('ethers');
-const { Contract, Provider } = require('ethers-multicall');
+const { setMulticallAddress, Contract, Provider } = require('ethers-multicall');
+setMulticallAddress(10, "0x7Cbc68dc836e05833CF88b6676715dB805B5c0a2");
+setMulticallAddress(1101, "0xcA11bde05977b3631167028862bE2a173976CA11");
+
 const fetch = require('node-fetch');
 const fs = require('fs');
 
@@ -9,14 +12,15 @@ const snap = require('./snap.js');
 
 // local json files
 const config = require('./.config.json');
-const contractAddresses = require('./contracts.json');
-const abi = require('./abi.json');
-const erc20Abi = require('./erc20Abi.json');
+const deployments = require('./deployments.json');
+const depositAbi = require('./abis/votium.json');
+const erc20Abi = require('./abis/erc20.json');
+const l2Abi = require('./abis/l2platform.json');
+
 var curveGauges = require('./gauges.json'); // variable is updated by updateCurveGauges()
 
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
 const curveGaugeEndpoint = "https://api.curve.fi/api/getAllGauges";
-
 
 // declaring some variables used in multiple scopes
 var shot;
@@ -25,20 +29,27 @@ var providers = {};
 var mProviders = {};
 var contracts = {};
 var mContracts = {};
+var l2platform;
+var ml2platform;
 
 var round = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
-
+function roundEpoch(_round) { return (_round+1348) * 86400 * 14; }
 
 // Initialize providers and votium deposit contracts (single and multicall)
 for (i in config.providers) {
-    // skip if provider or contract address is not defined
-    if (config.providers[i] == "" || contractAddresses[i] == "") continue;
+    // skip if provider is not defined
+    if (config.providers[i] == "") continue;
     try {
         // single and multicall uses separate providers and contract instances
         providers[i] = new ethers.providers.JsonRpcProvider(config.providers[i]);
         mProviders[i] = new Provider(providers[i]);
-        contracts[i] = new ethers.Contract(contractAddresses[i], abi, providers[i]);
-        mContracts[i] = new Contract(contractAddresses[i], abi);
+        if(i == "zkevm" && config.l2votePlatform != undefined) {
+            l2platform = new ethers.Contract(config.l2votePlatform, l2Abi, providers[i]);
+            ml2platform = new Contract(config.l2votePlatform, l2Abi);
+        }
+        if(deployments[i] == "") continue;
+        contracts[i] = new ethers.Contract(deployments[i], depositAbi, providers[i]);
+        mContracts[i] = new Contract(deployments[i], depositAbi);
     } catch (e) {
         console.log("Error: " + e);
         console.log("Could not connect to " + i);
@@ -149,7 +160,6 @@ async function _getIncentives(network, _round) {
                 "amount": incentivesRaw[n].amount.toString(),
                 "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
                 "excluded": incentivesRaw[n].excluded,
-                "network": network, // include network since we'll be batching promises for multiple networks
             };
             // if _round is earlier than current round, include additional data
             if(_round < round) {
@@ -262,70 +272,6 @@ async function _getIncentivesByUser(network, user) {
     return val;
 }
 
-// update snapshot local storage for a specified round, with specified delay between updates
-async function _updateSnapshot(delay, _round) {
-
-    // check if __dirname+'/'+_round+'.json' exists
-    var exists = fs.existsSync(__dirname + '/rounds/' + _round + '.json');
-    if (exists) {
-        shot = require(__dirname + '/rounds/' + _round + '.json');
-    } else {
-        shot = {}; 
-    }
-    if (shot.lastUpdated == undefined) { shot.lastUpdated = 0; }
-
-    // if lastUpdated is sooner than delay, or round has not started, return cached snapshot
-    if (shot.lastUpdated + delay < Math.floor(Date.now()/1000) && _round <= round) {
-        // if snapshot id is not defined, attempt to match it
-        if(shot.id == undefined) {
-            // get past 30 proposals from cvx.eth
-            query = "{\"query\":\"query Proposals { proposals ( first: 30, skip: 0, where: { space_in: [\\\"cvx.eth\\\"]}, orderBy: \\\"created\\\", orderDirection: desc ) { id title state created choices }}\",\"variables\":null,\"operationName\":\"Proposals\"}";
-            proposals = await snap.getProposals(query);
-
-            // if no proposals, create empty array so we can continue with the rest of the function
-            if (proposals == null) { 
-                proposals = [];
-            }
-
-            for (i = 0; i < proposals.length; i++) {
-                if (proposals[i].title.indexOf("Gauge Weight for Week") !== -1) {
-                    // check if proposal was created after, but within 24 hours after round start
-                    var roundstart = 1348 * 86400 * 14 + _round * 86400 * 14;
-                    if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400) {
-                        shot.id = proposals[i].id; // matched snapshot id
-                        for(g in proposals[i].choices) {
-                            // create gauge list from choice names
-                            if(curveGauges.gaugesReverse[proposals[i].choices[g]] != undefined) {
-                                proposals[i].choices[g] = curveGauges.gaugesReverse[proposals[i].choices[g]];
-                            } else if(proposals[i].choices[g] == "VeFunder-vyper") {
-                                proposals[i].choices[g] = "0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60";
-                            } else {
-                                console.log("Could not match gauge "+proposals[i].choices[g]+" to gauge address");
-                            }
-                        }
-                        shot.choices = proposals[i].choices; // store in round snapshot data
-                        // save snapshot id to file
-                        fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
-                        break;
-                    }
-                }
-            }
-        }
-        // if we failed to match, store lastUpdated and return empty shot object
-        if (shot.id == undefined) { 
-            shot.lastUpdated = Math.floor(Date.now() / 1000);
-            fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
-            return shot;
-        }
-        // if we have an id and delay has passed, update snapshot
-
-        shot.votes = await snap.tally(shot.id, shot.choices);
-        shot.lastUpdated = Math.floor(Date.now() / 1000);
-        fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
-    }
-    return shot;
-}
-
 // update curve gauges local storage, max once per day
 async function _getCurveGauges() {
     if (curveGauges.lastUpdated == undefined) { curveGauges.lastUpdated = 0; }
@@ -350,40 +296,76 @@ async function _getCurveGauges() {
     fs.writeFileSync(__dirname + '/gauges.json', JSON.stringify(curveGauges));
 }
 
+async function _l2votes(_round) {
+    // map round to proposal number
+    var proposalBase = _round - 48; // starting point to match with l2 deployment
+
+    // since proposals can be replaced with new merkle data, 
+    // we need to check for the newest proposal with the correct 
+    // start and end times to match the round
+
+    // get proposal count
+    var proposalCount = await l2platform.proposalCount();
+    if(proposalBase > proposalCount) return null; // return null if round is too high
+
+    // get proposal data for up to 5 rounds, to select the newest within the time range
+    calls["zkevm"] = [];
+    var max = proposalBase + 4 > proposalCount ? proposalCount : proposalBase + 4;
+    for(var i = proposalBase; i <= max; i++) {
+        calls["zkevm"].push(ml2platform.proposals(proposalBase));
+    }
+    console.log(roundEpoch(_round));
+    //console.log(proposal.startTime.toString());
+
+    // incomplete
+}
+
+//_l2votes(51);
+
+// export functions
 module.exports = {
-    round: round,
-    networks: Object.keys(providers),
-    gauges: curveGauges.gauges,
+    round: round, // current or most recent round
+    networks: Object.keys(contracts), // supported networks
+    gauges: curveGauges.gauges, // curve gauges
+
+    // get incentives for a given round, using an optional offset from the current round
     getIncentivesByOffset: async function (roundOffset = 0) {
         return await this.getIncentivesByRound(round + roundOffset);
     },
+    // get incentives for a given round
     getIncentivesByRound: async function (_round = round) {
-        console.log("Getting incentives for round " + _round);
         var incentives = {};
         var promises = [];
-        for (i in providers) {
-            promises.push(_getIncentives(i, _round));
+        // batch promises for each network
+        for (chain in contracts) {
+            promises.push(_getIncentives(chain, _round));
         }
         var results = await Promise.all(promises);
-        for (i in results) {
-            if (results[i] == null) continue;
+        var i = 0; // map counter
+        for (chain in contracts) {
+            if (results[i] == null) { i++; continue; } // skip if null
+            if(!incentives[chain]) incentives[chain] = []; // initialize chain array
             for (j in results[i]) {
-                if (!incentives[j]) incentives[j] = [];
+                if (!incentives[chain][j]) incentives[chain][j] = [];
                 for (k in results[i][j]) {
-                    incentives[j].push(results[i][j][k]);
+                    incentives[chain][j].push(results[i][j][k]);
                 }
             }
+            i++; // iterate through chains
         }
         return incentives;
     },
+    // update list of gauges from curve api (max once per day)
     updateCurveGauges: async function () {
         await _getCurveGauges();
         return curveGauges;
     },
+    // update snapshot for a given round, using an optional delay from last call
     updateSnapshot: async function (_round = round, delay = 0) {
-        shot = await _updateSnapshot(delay, _round);
+        shot = await snap.updateSnapshot(delay, _round);
         return shot;
     },
+    // get prices from coingecko (not a perfect solution, but gives a rough estimate)
     coingecko: async function (tokenString) {
         call = await fetch(coingecko + tokenString);
         call = await call.json();
@@ -393,9 +375,10 @@ module.exports = {
         }
         return formatted;
     },
+    // get all incentive ids for a given user
     getIncentivesByUser: async function (user) {
         var promises = [];
-        for (i in providers) {
+        for (i in contracts) {
             promises.push(_getIncentivesByUser(i, user));
         }
         var results = await Promise.all(promises);

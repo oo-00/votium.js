@@ -4,5 +4,6 @@
         "zkevm": "https://zkevm-rpc.com",
         "optimism": "https://mainnet.optimism.io",
         "arbitrum": "https://arb1.arbitrum.io/rpc"
-    }
+    },
+    "l2votePlatform": "0x6d024fa49de64a975980cddd4c3212492d189e57"
 }
