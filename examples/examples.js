@@ -19,7 +19,7 @@ async function examples() {
     // Returns deposits from a specific user
     ids = await votium.getIncentivesByUser("0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
     console.log("Ids for depositor 0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
-    for(r in ids) {
+    for (r in ids) {
         console.log(r);
         console.log(ids[r]);
     }
@@ -30,20 +30,25 @@ async function examples() {
     console.log("----------------------\nGet incentives by offset examples")
     incentives = await getIncentivesByOffsetExamples(); // examples below
     console.log("----------------------\nGet incentives by round examples")
-    await getIncentivesByRoundExamples(); 
+    await getIncentivesByRoundExamples();
 
     console.log("----------------------\nUpdate snapshot example")
-    shot = await votium.updateSnapshot(votium.round, 60*15); // update if more than 15 minutes
-    console.log(shot.votes);
+    shot = await votium.updateSnapshot(votium.round, 60 * 15); // update if more than 15 minutes
+    if (shot.votes == undefined) {
+        console.log("Snapshot not available for round " + votium.round);
+        return;
+    }
 
     // get prices from coingecko
     prices = {};
     priceString = '';
-    for(g in incentives) {
-        for(i in incentives[g]) { 
-            if(prices[incentives[g][i].token] == undefined) {
-                prices[incentives[g][i].token] = 0;
-                priceString += ',' + incentives[g][i].token;
+    for (chain in incentives) {
+        for (g in incentives[chain]) {
+            for (i in incentives[chain][g]) {
+                if (prices[incentives[chain][g][i].token] == undefined) {
+                    prices[incentives[chain][g][i].token] = 0;
+                    priceString += ',' + incentives[chain][g][i].token;
+                }
             }
         }
     }
@@ -54,47 +59,79 @@ async function examples() {
 
     // putting it together
     console.log("----------------------\n")
-    var totalUSD = 0;
-    var totalConsumedUSD = 0;
-    var gaugeUSD = {};
-    var gaugeConsumedUSD = {};
-    var optimisticTotalUSD = 0;
-    var optimisticGaugeUSD = {};
-    for(gauge in incentives) {
-        gaugeUSD[gauge] = 0;
-        gaugeConsumedUSD[gauge] = 0;
-        optimisticGaugeUSD[gauge] = 0;
-        console.log("Gauges with rewards for round " + votium.round + ":");
-        console.log("   "+gauge + ": " + curveGauges.gauges[gauge]);
-        console.log("       Votes for gauge: " + shot.votes.gauges[gauge].total);
-        console.log("       Rewards for gauge:");
-        for(i in incentives[gauge]) {
-            if(incentives[gauge][i].maxPerVote != 0) {
-                incentives[gauge][i].consumedAmount = incentives[gauge][i].amount > incentives[gauge][i].maxPerVote * shot.votes.gauges[gauge].total ? Math.floor(incentives[gauge][i].maxPerVote * shot.votes.gauges[gauge].total) : incentives[gauge][i].amount;
-                optimisticGaugeUSD[gauge] += ethers.utils.formatUnits((incentives[gauge][i].maxPerVote*25000000).toString(), incentives[gauge][i].decimals)*prices[incentives[gauge][i].token]; // 25m vlCVX is optimistic for any gauge
-                optimisticTotalUSD += ethers.utils.formatUnits((incentives[gauge][i].maxPerVote*25000000).toString(), incentives[gauge][i].decimals)*prices[incentives[gauge][i].token];
-            } else {
-                incentives[gauge][i].consumedAmount = incentives[gauge][i].amount;
-                optimisticGaugeUSD[gauge] += ethers.utils.formatUnits(incentives[gauge][i].amount, incentives[gauge][i].decimals) * prices[incentives[gauge][i].token];
-                optimisticTotalUSD += ethers.utils.formatUnits(incentives[gauge][i].amount, incentives[gauge][i].decimals) * prices[incentives[gauge][i].token];
-            }
-            incentives[gauge][i].consumedAmount = ethers.utils.formatUnits(incentives[gauge][i].consumedAmount, incentives[gauge][i].decimals);
-            incentives[gauge][i].amount = ethers.utils.formatUnits(incentives[gauge][i].amount, incentives[gauge][i].decimals);
-            gaugeConsumedUSD[gauge] += incentives[gauge][i].consumedAmount * prices[incentives[gauge][i].token];
-            gaugeUSD[gauge] += incentives[gauge][i].amount * prices[incentives[gauge][i].token];
-            totalConsumedUSD += incentives[gauge][i].consumedAmount * prices[incentives[gauge][i].token];
-            totalUSD += incentives[gauge][i].amount * prices[incentives[gauge][i].token];
-            console.log("           "+incentives[gauge][i].token + ": " + incentives[gauge][i].consumedAmount +"/"+incentives[gauge][i].amount+" ($" + incentives[gauge][i].consumedAmount * prices[incentives[gauge][i].token] + ")");
-        }
-        console.log("       Total gauge USD consumed:   $" + gaugeConsumedUSD[gauge]);
-        console.log("       Total gauge USD available:  $" + gaugeUSD[gauge]);
-        console.log("       Hypothetical USD available: $" + optimisticGaugeUSD[gauge]);
-        console.log("       $/vlCVX: $"+ gaugeUSD[gauge]/shot.votes.gauges[gauge].total)
-    }
-    console.log("Total USD consumed:     $" + totalConsumedUSD);
-    console.log("Total USD available:    $" + totalUSD);
-    console.log("Total Hypothetical USD: $" + optimisticTotalUSD + " (based on 25m vlCVX for maxPerVote)");
 
+    // some examples of how to use the data
+    var totalUSD = 0; // total USD available for all gauges
+    var totalConsumedUSD = 0; // total USD consumed for all gauges
+    var gaugeUSD = {}; // USD available for each gauge
+    var gaugeConsumedUSD = {}; // USD consumed for each gauge
+    var optimisticTotalUSD = 0; // total USD available for all gauges, assuming 25m vlCVX voted for gauges with maxPerVote
+    var optimisticGaugeUSD = {}; // USD available for each gauge, assuming 25m vlCVX voted for gauges with maxPerVote
+
+    // cycle through different supported networks
+    for (chain in incentives) {
+        // cycle through different gauges
+        for (gauge in incentives[chain]) {
+            // set initial object entry values to 0
+            gaugeUSD[gauge] = 0;
+            gaugeConsumedUSD[gauge] = 0;
+            optimisticGaugeUSD[gauge] = 0;
+
+            // if gauge is not in snapshot, skip
+            if (shot.votes.gauges[gauge] == undefined) {
+                if (votium.gauges[gauge] == undefined) continue;
+                var vote = { total: 0 };
+            } else {
+                var vote = shot.votes.gauges[gauge]; // for readability
+            }
+
+            console.log("Gauges with rewards for round " + votium.round + ":\n");
+            console.log(gauge + ": " + votium.gauges[gauge]);
+            console.log("   Votes for gauge: " + vote.total);
+            console.log("   Rewards for gauge:");
+            for (i in incentives[chain][gauge]) {
+                var incentive = incentives[chain][gauge][i]; // for readability
+
+                // convert amounts to human readable format
+                incentive.amount = ethers.utils.formatUnits(incentive.amount, incentive.decimals);
+                incentive.maxPerVote = ethers.utils.formatUnits(incentive.maxPerVote, incentive.decimals);
+
+                // check if entire incentive is consumed, or if there is a maxPerVote
+                if (incentive.maxPerVote != 0) {
+                    // if total amount is greater than maxPerVote*votes, entire reward is not consumed
+                    incentive.consumedAmount = incentive.amount > incentive.maxPerVote * vote.total ? Math.floor(incentive.maxPerVote * shot.votes.gauges[gauge].total) : incentive.amount;
+                    // optimistic total USD available is based on 25m vlCVX voting for gauges with maxPerVote
+                    // check if maxPerVote*25m is greater than total amount
+                    var optimisticAmount = incentive.maxPerVote * 25000000 > incentive.amount ? incentive.amount : incentive.maxPerVote * 25000000;
+                    // increase optimistic totals
+                    optimisticGaugeUSD[gauge] += optimisticAmount * prices[incentive.token]; 
+                    optimisticTotalUSD += optimisticAmount * prices[incentive.token];
+                } else {
+                    // if there is no maxPerVote, entire reward is consumed
+                    incentive.consumedAmount = incentive.amount;
+                    // increase optimistic totals
+                    optimisticGaugeUSD[gauge] += incentive.amount * prices[incentive.token];
+                    optimisticTotalUSD += incentive.amount * prices[incentive.token];
+                }
+                var total = incentive.amount * prices[incentive.token]; // readablity
+                var consumed = incentive.consumedAmount * prices[incentive.token];
+                
+                // increase totals
+                gaugeConsumedUSD[gauge] += consumed;
+                gaugeUSD[gauge] += total;
+                totalConsumedUSD += consumed;
+                totalUSD += total;
+                console.log("      " + incentive.token + ": " + incentive.consumedAmount + "/" + incentive.amount + " ($" + consumed + ")");
+            }
+            console.log("   Total gauge USD consumed:   $" + gaugeConsumedUSD[gauge]);
+            console.log("   Total gauge USD available:  $" + gaugeUSD[gauge]);
+            console.log("   Hypothetical USD available: $" + optimisticGaugeUSD[gauge]);
+            console.log("   $/vlCVX: $" + gaugeUSD[gauge] / vote.total)
+        }
+        console.log("Total USD consumed:     $" + totalConsumedUSD);
+        console.log("Total USD available:    $" + totalUSD);
+        console.log("Total Hypothetical USD: $" + optimisticTotalUSD + " (based on 25m vlCVX for maxPerVote)");
+    }
 }
 
 // Get incentives by passing an offset from current round
@@ -102,9 +139,12 @@ async function getIncentivesByOffsetExamples() {
 
     console.log("incentives for current or most recent round");
     var incentives = await votium.getIncentivesByOffset(); // same as 0
-    for(i in incentives) {
-        console.log(i + ": " + curveGauges.gauges[i]);
-        console.log(incentives[i]);
+    for (chain in incentives) {
+        console.log(chain); // which network the incentives belong to
+        for (gauge in incentives[chain]) {
+            console.log(gauge + ": " + curveGauges.gauges[gauge]);
+            console.log(incentives[chain][gauge]);
+        }
     }
 
     return incentives;
@@ -131,9 +171,12 @@ async function getIncentivesByRoundExamples() {
 
     console.log("incentives for round 51");
     var incentives = await votium.getIncentivesByRound(51);
-    for(i in incentives) {
-        console.log(i + ": " + curveGauges.gauges[i]);
-        console.log(incentives[i]);
+    for (chain in incentives) {
+        console.log(chain); // which network the incentives belong to
+        for (gauge in incentives[chain]) {
+            console.log(gauge + ": " + curveGauges.gauges[gauge]);
+            console.log(incentives[chain][gauge]);
+        }
     }
 
     /*  Other examples
