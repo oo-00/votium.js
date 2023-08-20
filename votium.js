@@ -296,9 +296,13 @@ async function _getCurveGauges() {
     fs.writeFileSync(__dirname + '/gauges.json', JSON.stringify(curveGauges));
 }
 
-async function _l2votes(_round) {
-    // map round to proposal number
+async function _l2round2proposal(_round) {
+    // initialize providers and contracts
+    await mProviders["zkevm"].init()
+    // map round to proposal
     var proposalBase = _round - 48; // starting point to match with l2 deployment
+    var proposals;
+    var proposal;
 
     // since proposals can be replaced with new merkle data, 
     // we need to check for the newest proposal with the correct 
@@ -308,19 +312,104 @@ async function _l2votes(_round) {
     var proposalCount = await l2platform.proposalCount();
     if(proposalBase > proposalCount) return null; // return null if round is too high
 
-    // get proposal data for up to 5 rounds, to select the newest within the time range
+    // get proposal data from base proposal number to newest, to select the newest within the time range
     calls["zkevm"] = [];
-    var max = proposalBase + 4 > proposalCount ? proposalCount : proposalBase + 4;
-    for(var i = proposalBase; i <= max; i++) {
-        calls["zkevm"].push(ml2platform.proposals(proposalBase));
+    // don't go past proposal count
+    for(var i = proposalBase; i < proposalCount; i++) {
+        calls["zkevm"].push(ml2platform.proposals(i));
     }
-    console.log(roundEpoch(_round));
-    //console.log(proposal.startTime.toString());
-
-    // incomplete
+    try {
+        proposals = await mProviders["zkevm"].all(calls["zkevm"]);
+    } catch (e) {
+        console.log("Error: " + e);
+        console.log("Could not get L2 proposals for " + _round);
+        return null;
+    }
+    // find newest proposal within time range
+    for(i in proposals) {
+        if(proposals[i].startTime >= roundEpoch(_round) && proposals[i].startTime <= roundEpoch(_round)+60*60*24) {
+            // overwrite proposal if newer proposal is within time range
+            proposal = {
+                "id": proposalBase+Number(i),
+                "baseWeightMerkleRoot": proposals[i].baseWeightMerkleRoot,
+                "startTime": Number(proposals[i].startTime),
+                "endTime": Number(proposals[i].endTime)
+            }
+        } else if(proposals[i].startTime > roundEpoch(_round)+60*60*24) {
+            // break if proposal is outside of time range
+            break;
+        }
+    }
+    if(proposal.id == undefined) return null; // return null if we failed to find a proposal within time range
+    return proposal;
 }
 
-//_l2votes(51);
+async function _l2votesFull(_round) {
+    // initialize providers and contracts
+    await mProviders["zkevm"].init()
+    var proposal = await _l2round2proposal(_round);
+    var voters;
+    var votes = {};
+
+    // get voter count
+    var voterCount = await l2platform.getVoterCount(proposal.id);
+    if(voterCount == 0) return null; // return null if no voters
+    
+    // get list of voters
+    calls["zkevm"] = [];
+    for(var i = 0; i < voterCount; i++) {
+        calls["zkevm"].push(ml2platform.votedUsers(proposal.id, i));
+    }
+    try {
+        voters = await mProviders["zkevm"].all(calls["zkevm"]);
+    } catch (e) {
+        console.log("Error: " + e);
+        console.log("Could not get L2 voters for proposal " + proposal.id);
+        return null;
+    }
+
+    // get votes for each voter
+    calls["zkevm"] = [];
+    for(i in voters) {
+        calls["zkevm"].push(ml2platform.getVote(proposal.id, voters[i]));
+    }
+    try {
+        // map votes to voter based on call order
+        var votesRaw = await mProviders["zkevm"].all(calls["zkevm"]);
+        var n = 0; // map counter
+        for(i in voters) {
+            votes[voters[i]] = votesRaw[n];
+            n++;
+        }
+    } catch (e) {
+        console.log("Error: " + e);
+        console.log("Could not get L2 votes for proposal " + proposal.id);
+        return null;
+    }
+
+    // break down into gauge -> voter -> vlCVX
+    var voteData = {total:0,gauges:{}};
+    for(v in votes) { // v = voter address
+        // cycle through gauges included in vote
+        for(gi in votes[v].gauges) { // gi = gauge index
+            g = votes[v].gauges[gi]; // g = gauge address
+            // if we have no data for this gauge, initialize
+            if(voteData.gauges[g] == undefined) voteData.gauges[g] = {total:0, voters:[]};
+            // user weight deliniated by 10000 in contract
+            weight = Number(votes[v].weights[gi]);
+            // get user amount in vlCVX (baseWeight + adjustedWeight)
+            var userAmount = Number(ethers.utils.formatUnits(votes[v].baseWeight, 18));
+            userAmount += Number(ethers.utils.formatUnits(votes[v].adjustedWeight, 18));
+            // convert to amout for gauge weight assigned
+            var toGauge = userAmount * weight / 10000;
+            // add to total, gauge total, and assign to gauge voter amount
+            voteData.total += toGauge;
+            voteData.gauges[g].total += toGauge;
+            voteData.gauges[g].voters[v] = toGauge;
+        }
+    }
+    return voteData;
+}
 
 // export functions
 module.exports = {
@@ -341,17 +430,17 @@ module.exports = {
             promises.push(_getIncentives(chain, _round));
         }
         var results = await Promise.all(promises);
-        var i = 0; // map counter
+        var n = 0; // map counter
         for (chain in contracts) {
-            if (results[i] == null) { i++; continue; } // skip if null
+            if (results[n] == null) { n++; continue; } // skip if null
             if(!incentives[chain]) incentives[chain] = []; // initialize chain array
-            for (j in results[i]) {
+            for (j in results[n]) {
                 if (!incentives[chain][j]) incentives[chain][j] = [];
-                for (k in results[i][j]) {
-                    incentives[chain][j].push(results[i][j][k]);
+                for (k in results[n][j]) {
+                    incentives[chain][j].push(results[n][j][k]);
                 }
             }
-            i++; // iterate through chains
+            n++; // iterate through chains
         }
         return incentives;
     },
@@ -364,6 +453,10 @@ module.exports = {
     updateSnapshot: async function (_round = round, delay = 0) {
         shot = await snap.updateSnapshot(delay, _round);
         return shot;
+    },
+    // get l2 votes for a given round, in the same format as snapshot function
+    l2votes: async function (_round = round) {
+        return await _l2votesFull(_round);
     },
     // get prices from coingecko (not a perfect solution, but gives a rough estimate)
     coingecko: async function (tokenString) {
