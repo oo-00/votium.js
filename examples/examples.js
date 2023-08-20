@@ -38,7 +38,14 @@ async function examples() {
         console.log("Snapshot not available for round " + votium.round);
         return;
     }
+    shot = shot.votes.gauges; // removing some unused data
+    console.log(shot);
 
+    console.log("----------------------\nUpdate l2 votes example")
+    var l2votes = await votium.l2votes(votium.round);
+    l2votes = l2votes.gauges; // removing some unused data, l2votes format == shot.votes format
+    console.log(l2votes);
+    
     // get prices from coingecko
     prices = {};
     priceString = '';
@@ -78,11 +85,11 @@ async function examples() {
             optimisticGaugeUSD[gauge] = 0;
 
             // if gauge is not in snapshot, skip
-            if (shot.votes.gauges[gauge] == undefined) {
+            if (shot[gauge] == undefined) {
                 if (votium.gauges[gauge] == undefined) continue;
                 var vote = { total: 0 };
             } else {
-                var vote = shot.votes.gauges[gauge]; // for readability
+                var vote = shot[gauge]; // for readability
             }
 
             console.log("Gauges with rewards for round " + votium.round + ":\n");
@@ -99,7 +106,7 @@ async function examples() {
                 // check if entire incentive is consumed, or if there is a maxPerVote
                 if (incentive.maxPerVote != 0) {
                     // if total amount is greater than maxPerVote*votes, entire reward is not consumed
-                    incentive.consumedAmount = incentive.amount > incentive.maxPerVote * vote.total ? Math.floor(incentive.maxPerVote * shot.votes.gauges[gauge].total) : incentive.amount;
+                    incentive.consumedAmount = incentive.amount > incentive.maxPerVote * vote.total ? Math.floor(incentive.maxPerVote * vote.total) : incentive.amount;
                     // optimistic total USD available is based on 25m vlCVX voting for gauges with maxPerVote
                     // check if maxPerVote*25m is greater than total amount
                     var optimisticAmount = incentive.maxPerVote * 25000000 > incentive.amount ? incentive.amount : incentive.maxPerVote * 25000000;
@@ -126,7 +133,7 @@ async function examples() {
             console.log("   Total gauge USD consumed:   $" + gaugeConsumedUSD[gauge]);
             console.log("   Total gauge USD available:  $" + gaugeUSD[gauge]);
             console.log("   Hypothetical USD available: $" + optimisticGaugeUSD[gauge]);
-            console.log("   $/vlCVX: $" + gaugeUSD[gauge] / vote.total)
+            console.log("   $/vlCVX: $" + gaugeConsumedUSD[gauge] / vote.total)
         }
         console.log("Total USD consumed:     $" + totalConsumedUSD);
         console.log("Total USD available:    $" + totalUSD);
