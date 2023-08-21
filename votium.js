@@ -58,6 +58,42 @@ for (i in config.providers) {
     }
 }
 
+async function _getDecimalsFromIncentives(network, incentivesRaw) {
+
+    // get decimals for each token, this will make it easier to display amounts correctly in frontend
+    var decimals = {};
+    var tokenContracts = {};
+
+    calls[network] = [];
+    for(i in incentivesRaw) {
+        // only add decimals call if we haven't already
+        if(decimals[incentivesRaw[i].token] == undefined) {
+            // initialize token contract if we haven't already
+            tokenContracts[incentivesRaw[i].token] = new Contract(incentivesRaw[i].token, erc20Abi);
+            decimals[incentivesRaw[i].token] = 0; // placeholder so we don't call decimals more than once
+            calls[network].push(tokenContracts[incentivesRaw[i].token].decimals());
+        }
+    }
+    try {
+        // unmapped decimals
+        decimalsRaw = await mProviders[network].all(calls[network]);
+    } catch (e) {
+        console.log("Error: " + e);
+        console.log("Could not get decimals for " + network);
+        return null;
+    }
+    // reset decimals array so we can map in the same order we built
+    decimals = {};
+    n = 0; // map counter
+    for(i in incentivesRaw) {
+        // only map decimals if we haven't already (same order as calls)
+        if(decimals[incentivesRaw[i].token] == undefined) {
+            decimals[incentivesRaw[i].token] = decimalsRaw[n];
+            n++;
+        }
+    }
+    return decimals;
+}
 // get incentives for a specified network and round number
 async function _getIncentives(network, _round) {
     // initialize providers and contracts
@@ -116,38 +152,7 @@ async function _getIncentives(network, _round) {
         return null;
     }
 
-    // get decimals for each token, this will make it easier to display amounts correctly in frontend
-    var decimals = {};
-    var tokenContracts = {};
-
-    calls[network] = [];
-    for(i in incentivesRaw) {
-        // only add decimals call if we haven't already
-        if(decimals[incentivesRaw[i].token] == undefined) {
-            // initialize token contract if we haven't already
-            tokenContracts[incentivesRaw[i].token] = new Contract(incentivesRaw[i].token, erc20Abi);
-            decimals[incentivesRaw[i].token] = 0; // placeholder so we don't call decimals more than once
-            calls[network].push(tokenContracts[incentivesRaw[i].token].decimals());
-        }
-    }
-    try {
-        // unmapped decimals
-        decimalsRaw = await mProviders[network].all(calls[network]);
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get decimals for " + network);
-        return null;
-    }
-    // reset decimals array so we can map in the same order we built
-    decimals = {};
-    n = 0; // map counter
-    for(i in incentivesRaw) {
-        // only map decimals if we haven't already (same order as calls)
-        if(decimals[incentivesRaw[i].token] == undefined) {
-            decimals[incentivesRaw[i].token] = decimalsRaw[n];
-            n++;
-        }
-    }
+    decimals = await _getDecimalsFromIncentives(network, incentivesRaw);
 
     // build incentives object
     var n = 0; // map counter
@@ -157,21 +162,23 @@ async function _getIncentives(network, _round) {
         for (var j = 0; j < incentivesLengths[i]; j++) {
             incentives[gauges[i]][j] = {
                 "index": j,
+                "pool": curveGauges.gauges[gauges[i]],
                 "token": incentivesRaw[n].token,
                 "decimals": decimals[incentivesRaw[n].token],
                 "amount": incentivesRaw[n].amount.toString(),
                 "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
                 "excluded": incentivesRaw[n].excluded,
+                "depositor": incentivesRaw[n].depositor
             };
             // if _round is earlier than current round, include additional data
             if(_round < round) {
                 incentives[gauges[i]][j].distributed = incentivesRaw[n].distributed.toString();
                 incentives[gauges[i]][j].recycled = incentivesRaw[n].recycled.toString();
-                incentives[gauges[i]][j].depositor = incentivesRaw[n].depositor.toString();
             }
             n++;
         }
     }
+
     return incentives;
 }
 
@@ -268,6 +275,52 @@ async function _getIncentivesByUser(network, user) {
         console.log("Error: " + e);
         console.log("Could not get user incentives for " + user + " " + network);
         return null;
+    }
+    // get deposit data for each incentive
+    calls[network] = [];
+    for(r in userIncentives) {
+        for(g in userIncentives[r]) {
+            for(i in userIncentives[r][g]) {
+                calls[network].push(mContracts[network].viewIncentive(r, g, userIncentives[r][g][i]));
+            }
+        }
+    }
+    try {
+        // raw data before adding decimals
+        incentivesRaw = await mProviders[network].all(calls[network]);
+    }
+    catch (e) {
+        console.log("Error: " + e);
+        console.log("Could not get incentives for " + network + " round " + _round + " gauge " + gauges[i] + " incentive " + j);
+        return null;
+    }
+
+    decimals = await _getDecimalsFromIncentives(network, incentivesRaw);
+
+    // build incentives object
+    var n = 0; // map counter
+    // building in the same way as we built the calls for incentivesRaw
+    for(r in userIncentives) {
+        for(g in userIncentives[r]) {
+            for(i in userIncentives[r][g]) {
+                userIncentives[r][g][i] = {
+                    "index": userIncentives[r][g][i],
+                    "pool": curveGauges.gauges[g],
+                    "token": incentivesRaw[n].token,
+                    "decimals": decimals[incentivesRaw[n].token],
+                    "amount": incentivesRaw[n].amount.toString(),
+                    "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
+                    "excluded": incentivesRaw[n].excluded
+                };
+                // if _round is earlier than current round, include additional data
+                if(r < round) {
+                    userIncentives[r][g][i].distributed = incentivesRaw[n].distributed.toString();
+                    userIncentives[r][g][i].recycled = incentivesRaw[n].recycled.toString();
+                    userIncentives[r][g][i].depositor = incentivesRaw[n].depositor.toString();
+                }
+                n++;
+            }
+        }
     }
     return userIncentives;
 }
@@ -495,7 +548,7 @@ module.exports = {
             n++;
         }
         // save to storage
-        await storage.write("userDeposits", incentives, user);
+        await storage.write("userDeposits", incentives, user.toLowerCase());
         return incentives;
     }
 
