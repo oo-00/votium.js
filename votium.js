@@ -1,15 +1,5 @@
-// outside libraries
-const { ethers } = require('ethers');
-const { setMulticallAddress, Contract, Provider } = require('ethers-multicall');
-setMulticallAddress(10, "0x7Cbc68dc836e05833CF88b6676715dB805B5c0a2");
-setMulticallAddress(1101, "0xcA11bde05977b3631167028862bE2a173976CA11");
-
-const fetch = require('node-fetch');
-const fs = require('fs');
-
-// temporary snapshot vote tallying
-const snap = require('./snap.js');
-
+// storage handler
+const storage = require('./storageHandler.js');
 // local json files
 const config = require('./.config.json');
 const deployments = require('./deployments.json');
@@ -17,13 +7,25 @@ const depositAbi = require('./abis/votium.json');
 const erc20Abi = require('./abis/erc20.json');
 const l2Abi = require('./abis/l2platform.json');
 
-var curveGauges = require('./gauges.json'); // variable is updated by updateCurveGauges()
+// outside libraries
+const { ethers } = require('ethers');
+const { setMulticallAddress, Contract, Provider } = require('ethers-multicall');
+setMulticallAddress(10, "0x7Cbc68dc836e05833CF88b6676715dB805B5c0a2");
+setMulticallAddress(1101, "0xcA11bde05977b3631167028862bE2a173976CA11");
+
+const fetch = require('node-fetch');
+
+
+// temporary snapshot vote tallying
+const snap = require('./snap.js');
+
+
+var curveGauges = storage.read("gauges"); // curve gauges
 
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
 const curveGaugeEndpoint = "https://api.curve.fi/api/getAllGauges";
 
 // declaring some variables used in multiple scopes
-var shot;
 var calls = {};
 var providers = {};
 var mProviders = {};
@@ -267,13 +269,12 @@ async function _getIncentivesByUser(network, user) {
         console.log("Could not get user incentives for " + user + " " + network);
         return null;
     }
-    var val = {};
-    val[network] = userIncentives; // return network since we'll be batching promises for multiple networks
-    return val;
+    return userIncentives;
 }
 
 // update curve gauges local storage, max once per day
 async function _getCurveGauges() {
+    await Promise.resolve(curveGauges);
     if (curveGauges.lastUpdated == undefined) { curveGauges.lastUpdated = 0; }
     if (Math.floor(Date.now() / 1000) - curveGauges.lastUpdated < 60 * 60 * 24) { return; } // do not query curve api more than once per day
     var curveGaugesRaw = [];
@@ -287,13 +288,12 @@ async function _getCurveGauges() {
     if (curveGaugesRaw.success != true) { return; } // do not update if curve api returns error
     curveGaugesRaw = curveGaugesRaw.data; // remove success and data keys
     // build curveGauges object
-    curveGauges = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}, gaugesReverse: {} };
+    curveGauges = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
     for (i in curveGaugesRaw) {
         curveGauges.gauges[ethers.utils.getAddress(curveGaugesRaw[i].gauge)] = curveGaugesRaw[i].shortName;
-        curveGauges.gaugesReverse[curveGaugesRaw[i].shortName] = ethers.utils.getAddress(curveGaugesRaw[i].gauge);
     }
-    // save curve gauges to file
-    fs.writeFileSync(__dirname + '/gauges.json', JSON.stringify(curveGauges));
+    // save curve gauges to storage
+    storage.write("gauges", curveGauges);
 }
 
 async function _l2round2proposal(_round) {
@@ -394,7 +394,7 @@ async function _l2votesFull(_round) {
         for(gi in votes[v].gauges) { // gi = gauge index
             g = votes[v].gauges[gi]; // g = gauge address
             // if we have no data for this gauge, initialize
-            if(voteData.gauges[g] == undefined) voteData.gauges[g] = {total:0, voters:[]};
+            if(voteData.gauges[g] == undefined) voteData.gauges[g] = {total:0, voters:{}};
             // user weight deliniated by 10000 in contract
             weight = Number(votes[v].weights[gi]);
             // get user amount in vlCVX (baseWeight + adjustedWeight)
@@ -408,6 +408,8 @@ async function _l2votesFull(_round) {
             voteData.gauges[g].voters[v] = toGauge;
         }
     }
+    // save to storage
+    await storage.write("l2voteData", voteData, _round);
     return voteData;
 }
 
@@ -415,8 +417,11 @@ async function _l2votesFull(_round) {
 module.exports = {
     round: round, // current or most recent round
     networks: Object.keys(contracts), // supported networks
-    gauges: curveGauges.gauges, // curve gauges
-
+    storageType: storage.storageType, // storage type
+    gauges: async function () {
+        await Promise.resolve(curveGauges);
+        return curveGauges.gauges; // curve gauges
+    },
     // get incentives for a given round, using an optional offset from the current round
     getIncentivesByOffset: async function (roundOffset = 0) {
         return await this.getIncentivesByRound(round + roundOffset);
@@ -433,7 +438,7 @@ module.exports = {
         var n = 0; // map counter
         for (chain in contracts) {
             if (results[n] == null) { n++; continue; } // skip if null
-            if(!incentives[chain]) incentives[chain] = []; // initialize chain array
+            if(!incentives[chain]) incentives[chain] = {}; // initialize chain object
             for (j in results[n]) {
                 if (!incentives[chain][j]) incentives[chain][j] = [];
                 for (k in results[n][j]) {
@@ -442,6 +447,8 @@ module.exports = {
             }
             n++; // iterate through chains
         }
+        // save to storage
+        await storage.write("depositData", incentives, _round);
         return incentives;
     },
     // update list of gauges from curve api (max once per day)
@@ -451,7 +458,7 @@ module.exports = {
     },
     // update snapshot for a given round, using an optional delay from last call
     updateSnapshot: async function (_round = round, delay = 0) {
-        shot = await snap.updateSnapshot(delay, _round);
+        var shot = await snap.updateSnapshot(delay, _round);
         return shot;
     },
     // get l2 votes for a given round, in the same format as snapshot function
@@ -476,9 +483,19 @@ module.exports = {
         }
         var results = await Promise.all(promises);
         var incentives = {};
-        for(i in results) {
-            incentives[Object.keys(results[i])[0]] = results[i][Object.keys(results[i])[0]];
+        var n = 0; // map counter
+        for(i in contracts) {
+            for(r in results[n]) {
+                if(!incentives[r]) incentives[r] = {};
+                if(!incentives[r][i]) incentives[r][i] = {};
+                for(g in results[n][r]) {
+                    incentives[r][i][g] = results[n][r][g];
+                }
+            }
+            n++;
         }
+        // save to storage
+        await storage.write("userDeposits", incentives, user);
         return incentives;
     }
 
