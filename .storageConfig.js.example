@@ -1,0 +1,45 @@
+module.exports = {
+
+    storageType: 0, // 0 for local, 1 for firebase
+
+    storageTypes: [ // supported storage types
+        "local",
+        "firebase"
+    ],
+
+    // Paths for each storage type
+    // For local, the path is relative to the root directory
+    // For firebase, the path is relative to the root of the database
+    storagePaths: [
+        // Local paths (only used if storageType is 0)
+        {
+            "depositData": "/storage/depositData/",
+            "userDeposits": "/storage/userDeposits/", 
+            "gauges": "/storage/gauges", // no trailing slash because it's a file
+            "snapshotVoteData": "/storage/snapshotVoteData/",
+            "l2voteData": "/storage/l2voteData/"
+        },
+        // Firebase paths (only used if storageType is 1)
+        {
+            "depositData": "v2/depositData/",
+            "userDeposits": "v2/userDeposits/",
+            "gauges": "v2/gauges", // no trailing slash as we're writing directly to this key
+            "snapshotVoteData": "v2/snapshotVoteData/",
+            "l2voteData": "v2/l2voteData/"
+        }
+    ],
+
+    // Firebase config, only used if storageType is 1
+
+        // Firebase URL
+        firebaseUrl: "https://[YOUR DB HERE].firebaseio.com/",
+        // Authenticate locally with Cert or as an uploaded service account
+        firebaseLocal: true,
+        // Firebase credentials, only used if firebaseLocal is true
+        firebaseCert: {
+            "type": "service_account",
+            "project_id": "..."
+            // ...
+        }
+    //
+}

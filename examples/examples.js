@@ -1,14 +1,16 @@
 const votium = require('../votium.js');
 const ethers = require('ethers');
-var curveGauges;
 
+
+var curveGauges;
 
 async function examples() {
 
     // Map of gauge addresses to gauge shortNames
     // relies on local cache of gauges.json, so may not be suitable for UIs
-    curveGauges = votium.gauges; // returns gauges.json
-    curveGauges = await votium.updateCurveGauges(); // updates gauges.json if more than 24 hours old
+    curveGauges = await votium.gauges(); // returns gauges.json
+    curveGauges = await votium.updateCurveGauges(); // updates gauges.json if data more than 24 hours old
+    curveGauges = curveGauges.gauges; // removing some unused data
 
     // Returns current or most recent round number
     console.log("round: " + votium.round);
@@ -40,6 +42,7 @@ async function examples() {
     }
     shot = shot.votes.gauges; // removing some unused data
     console.log(shot);
+
 
     console.log("----------------------\nUpdate l2 votes example")
     var l2votes = await votium.l2votes(votium.round);
@@ -86,14 +89,14 @@ async function examples() {
 
             // if gauge is not in snapshot, skip
             if (shot[gauge] == undefined) {
-                if (votium.gauges[gauge] == undefined) continue;
+                if (curveGauges[gauge] == undefined) continue;
                 var vote = { total: 0 };
             } else {
                 var vote = shot[gauge]; // for readability
             }
 
             console.log("Gauges with rewards for round " + votium.round + ":\n");
-            console.log(gauge + ": " + votium.gauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge]);
             console.log("   Votes for gauge: " + vote.total);
             console.log("   Rewards for gauge:");
             for (i in incentives[chain][gauge]) {
@@ -139,6 +142,9 @@ async function examples() {
         console.log("Total USD available:    $" + totalUSD);
         console.log("Total Hypothetical USD: $" + optimisticTotalUSD + " (based on 25m vlCVX for maxPerVote)");
     }
+    if(votium.storageType == "firebase") {
+        process.exit(); // exit if using firebase, as it will hang
+    }
 }
 
 // Get incentives by passing an offset from current round
@@ -149,7 +155,7 @@ async function getIncentivesByOffsetExamples() {
     for (chain in incentives) {
         console.log(chain); // which network the incentives belong to
         for (gauge in incentives[chain]) {
-            console.log(gauge + ": " + curveGauges.gauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge]);
             console.log(incentives[chain][gauge]);
         }
     }
@@ -181,7 +187,7 @@ async function getIncentivesByRoundExamples() {
     for (chain in incentives) {
         console.log(chain); // which network the incentives belong to
         for (gauge in incentives[chain]) {
-            console.log(gauge + ": " + curveGauges.gauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge]);
             console.log(incentives[chain][gauge]);
         }
     }

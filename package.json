@@ -2,6 +2,7 @@
   "dependencies": {
     "ethers": "5.4",
     "ethers-multicall": "^0.2.3",
+    "firebase-functions": "^4.4.1",
     "graphql-request": "^6.1.0",
     "node-fetch": "2.6"
   }

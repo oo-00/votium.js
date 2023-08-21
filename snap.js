@@ -1,9 +1,12 @@
+const storage = require('./storageHandler.js');
+
 const { request, gql } = require('graphql-request');
 const fetch = require('node-fetch');
 const snapshot_endpoint = "https://hub.snapshot.org/graphql";
 const SNAPSHOT_SCORE_API = 'https://score.snapshot.org/api/scores';
 const fs = require('fs');
 var round = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
+
 
 async function grabProposal(hashId) {
     const proposalQuery = gql`
@@ -282,15 +285,13 @@ module.exports = {
     endpoint: snapshot_endpoint,
     // update snapshot local storage for a specified round, with specified delay between updates
     updateSnapshot: async (delay, _round) => {
-
-        // check if __dirname+'/'+_round+'.json' exists
-        var exists = fs.existsSync(__dirname + '/rounds/' + _round + '.json');
-        if (exists) {
-            shot = require(__dirname + '/rounds/' + _round + '.json');
-        } else {
-            shot = {}; 
+        curveGauges = await storage.read("gauges");
+        gaugesReverse = {};
+        for (g in curveGauges.gauges) {
+            gaugesReverse[curveGauges.gauges[g]] = g;
         }
-        if (shot.lastUpdated == undefined) { shot.lastUpdated = 0; }
+        var shot = await storage.read("snapshotVoteData", _round);
+        if(shot == null) { shot = {lastUpdated:0}; }
 
         // if lastUpdated is sooner than delay, or round has not started, return cached snapshot
         if (shot.lastUpdated + delay < Math.floor(Date.now()/1000) && _round <= round) {
@@ -313,8 +314,8 @@ module.exports = {
                             shot.id = proposals[i].id; // matched snapshot id
                             for(g in proposals[i].choices) {
                                 // create gauge list from choice names
-                                if(curveGauges.gaugesReverse[proposals[i].choices[g]] != undefined) {
-                                    proposals[i].choices[g] = curveGauges.gaugesReverse[proposals[i].choices[g]];
+                                if(gaugesReverse[proposals[i].choices[g]] != undefined) {
+                                    proposals[i].choices[g] = gaugesReverse[proposals[i].choices[g]];
                                 } else if(proposals[i].choices[g] == "VeFunder-vyper") {
                                     proposals[i].choices[g] = "0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60";
                                 } else {
@@ -322,8 +323,6 @@ module.exports = {
                                 }
                             }
                             shot.choices = proposals[i].choices; // store in round snapshot data
-                            // save snapshot id to file
-                            fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
                             break;
                         }
                     }
@@ -332,14 +331,14 @@ module.exports = {
             // if we failed to match, store lastUpdated and return empty shot object
             if (shot.id == undefined) { 
                 shot.lastUpdated = Math.floor(Date.now() / 1000);
-                fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
+                await storage.write("snapshotVoteData", shot, _round);
                 return shot;
             }
             // if we have an id and delay has passed, update snapshot
 
             shot.votes = await tally(shot.id, shot.choices);
             shot.lastUpdated = Math.floor(Date.now() / 1000);
-            fs.writeFileSync(__dirname + '/rounds/' + _round + '.json', JSON.stringify(shot, null, 2));
+            await storage.write("snapshotVoteData", shot, _round);
         }
         return shot;
     }
