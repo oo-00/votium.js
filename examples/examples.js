@@ -18,21 +18,38 @@ async function examples() {
     // Returns supported networks
     console.log("networks: "); console.log(votium.networks);
 
-    // Returns deposits from a specific user
-    ids = await votium.getIncentivesByUser("0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
-    console.log("Ids for depositor 0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19");
-    for (r in ids) {
-        console.log(r);
-        console.log(ids[r]);
-    }
 
     // There are two methods for fetching incentives for a given round
     // Both functions accomplish the same goal but developers may have a preference for how a round is called
 
     console.log("----------------------\nGet incentives by offset examples")
     incentives = await getIncentivesByOffsetExamples(); // examples below
+    
     console.log("----------------------\nGet incentives by round examples")
     await getIncentivesByRoundExamples();
+
+    // Returns deposits from a specific user, we'll call for all users with deposits in the current round
+    console.log("----------------------\nGet deposits by user example")
+    users = [];
+    for(chain in incentives) {
+        for(gauge in incentives[chain]) {
+            for(i in incentives[chain][gauge]) {
+                var deposit = incentives[chain][gauge][i];
+                if(users.indexOf(deposit.depositor) == -1) {
+                    users.push(deposit.depositor);
+                }
+            }
+        }
+    }
+    for(u in users) {
+        ids = await votium.getIncentivesByUser(users[u]);
+        console.log("Ids for depositor "+users[u]+":");
+        for (r in ids) {
+            console.log(r);
+            console.log(ids[r]);
+        }
+    }
+    process.exit();
 
     console.log("----------------------\nUpdate snapshot example")
     shot = await votium.updateSnapshot(votium.round, 60 * 15); // update if more than 15 minutes
