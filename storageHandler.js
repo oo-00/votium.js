@@ -8,6 +8,10 @@ switch(config.storageTypes[config.storageType]) {
         const fs = require('fs');
         _read = async (key, suffix = "") =>{
             try {
+                // check if file exists
+                if(!fs.existsSync(__dirname+config.storagePaths[config.storageType][key] + suffix+".json")) {
+                    return null;
+                }
                 data = require(__dirname+config.storagePaths[config.storageType][key] + suffix+".json");
                 return data;
             } catch (err) {

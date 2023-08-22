@@ -17,7 +17,9 @@ module.exports = {
             "userDeposits": "/storage/userDeposits/", 
             "gauges": "/storage/gauges", // no trailing slash because it's a file
             "snapshotVoteData": "/storage/snapshotVoteData/",
-            "l2voteData": "/storage/l2voteData/"
+            "l2voteData": "/storage/l2voteData/",
+            "vlCVXAddresses": "/storage/vlCVXAddresses", // file
+            "vlCVXMerkles": "/storage/vlCVXMerkles/",
         },
         // Firebase paths (only used if storageType is 1)
         {
@@ -25,7 +27,9 @@ module.exports = {
             "userDeposits": "v2/userDeposits/",
             "gauges": "v2/gauges", // no trailing slash as we're writing directly to this key
             "snapshotVoteData": "v2/snapshotVoteData/",
-            "l2voteData": "v2/l2voteData/"
+            "l2voteData": "v2/l2voteData/",
+            "vlCVXAddresses": "v2/vlCVXAddresses", // direct key
+            "vlCVXMerkles": "v2/vlCVXMerkles/",
         }
     ],
 

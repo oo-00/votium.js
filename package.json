@@ -1,9 +1,13 @@
 {
   "dependencies": {
+    "@pelith/ethers-multicall": "^0.2.3",
+    "ethereum-block-by-date": "^1.4.9",
     "ethers": "5.4",
     "ethers-multicall": "^0.2.3",
     "firebase-functions": "^4.4.1",
     "graphql-request": "^6.1.0",
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.3.10",
     "node-fetch": "2.6"
   }
 }
