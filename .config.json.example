@@ -5,5 +5,7 @@
         "optimism": "https://mainnet.optimism.io",
         "arbitrum": "https://arb1.arbitrum.io/rpc"
     },
-    "l2votePlatform": "0x6d024fa49de64a975980cddd4c3212492d189e57"
+    "l2votePlatform": "0x6d024fa49de64a975980cddd4c3212492d189e57",
+    "delegationRegistry": "0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446",
+    "vlCVXLocker": "0x72a19342e8F1838460eBFCCEf09F6585e32db86E"
 }

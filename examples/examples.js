@@ -6,18 +6,27 @@ var curveGauges;
 
 async function examples() {
 
-    // Map of gauge addresses to gauge shortNames
-    // relies on local cache of gauges.json, so may not be suitable for UIs
-    curveGauges = await votium.gauges(); // returns gauges.json
-    curveGauges = await votium.updateCurveGauges(); // updates gauges.json if data more than 24 hours old
-    curveGauges = curveGauges.gauges; // removing some unused data
-
     // Returns current or most recent round number
     console.log("round: " + votium.round);
 
     // Returns supported networks
     console.log("networks: "); console.log(votium.networks);
 
+    // Returns storage type
+    console.log("storage type: " + votium.storageType);
+    
+    // Update vlCVX merkle tree if not created for this round
+    vlCVXMerkle = await votium.vlCVXMerkle();
+    if(vlCVXMerkle == null) {
+        console.log("vlCVX merkle tree not created for round " + votium.round);
+        console.log("creating...");
+        vlCVXMerkle = await votium.generateVlCVXMerkle(true);
+        console.log("vlCVX merkle tree created for round " + votium.round);
+    }
+
+    // Map of gauge addresses to gauge shortNames
+    // relies on local cache of gauges.json, so may not be suitable for UIs
+    curveGauges = await votium.updateCurveGauges(); // grabs gauges storage and updates if data more than 24 hours old
 
     // There are two methods for fetching incentives for a given round
     // Both functions accomplish the same goal but developers may have a preference for how a round is called
@@ -49,7 +58,6 @@ async function examples() {
             console.log(ids[r]);
         }
     }
-    process.exit();
 
     console.log("----------------------\nUpdate snapshot example")
     shot = await votium.updateSnapshot(votium.round, 60 * 15); // update if more than 15 minutes
@@ -58,13 +66,13 @@ async function examples() {
         return;
     }
     shot = shot.votes.gauges; // removing some unused data
-    console.log(shot);
+    //console.log(shot);
 
 
     console.log("----------------------\nUpdate l2 votes example")
     var l2votes = await votium.l2votes(votium.round);
     l2votes = l2votes.gauges; // removing some unused data, l2votes format == shot.votes format
-    console.log(l2votes);
+    //console.log(l2votes);
     
     // get prices from coingecko
     prices = {};
