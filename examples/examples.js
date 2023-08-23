@@ -7,6 +7,7 @@ var curveGauges;
 async function examples() {
 
     // Returns current or most recent round number
+    votium.round++;
     console.log("round: " + votium.round);
 
     // Returns supported networks
@@ -16,13 +17,14 @@ async function examples() {
     console.log("storage type: " + votium.storageType);
     
     // Update vlCVX merkle tree if not created for this round
+    /*
     vlCVXMerkle = await votium.vlCVXMerkle();
     if(vlCVXMerkle == null) {
         console.log("vlCVX merkle tree not created for round " + votium.round);
         console.log("creating...");
         vlCVXMerkle = await votium.generateVlCVXMerkle(true);
         console.log("vlCVX merkle tree created for round " + votium.round);
-    }
+    }*/
 
     // Map of gauge addresses to gauge shortNames
     // relies on local cache of gauges.json, so may not be suitable for UIs
@@ -34,8 +36,8 @@ async function examples() {
     console.log("----------------------\nGet incentives by offset examples")
     incentives = await getIncentivesByOffsetExamples(); // examples below
     
-    console.log("----------------------\nGet incentives by round examples")
-    await getIncentivesByRoundExamples();
+    //console.log("----------------------\nGet incentives by round examples")
+    //await getIncentivesByRoundExamples();
 
     // Returns deposits from a specific user, we'll call for all users with deposits in the current round
     console.log("----------------------\nGet deposits by user example")
@@ -175,8 +177,8 @@ async function examples() {
 // Get incentives by passing an offset from current round
 async function getIncentivesByOffsetExamples() {
 
-    console.log("incentives for current or most recent round");
-    var incentives = await votium.getIncentivesByOffset(); // same as 0
+    console.log("incentives for next round");
+    var incentives = await votium.getIncentivesByOffset(1); 
     for (chain in incentives) {
         console.log(chain); // which network the incentives belong to
         for (gauge in incentives[chain]) {

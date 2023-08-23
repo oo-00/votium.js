@@ -1,5 +1,5 @@
 {
-  "51": {
+  "52": {
     "mainnet": {
       "0xfB18127c1471131468a1AaD4785c19678e521D86": [
         {
@@ -7,17 +7,8 @@
           "pool": "CRV+cvxCRV (0x971a…)",
           "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
           "decimals": 18,
-          "amount": "96000000000000000",
-          "maxPerVote": "0",
-          "excluded": []
-        },
-        {
-          "index": "1",
-          "pool": "CRV+cvxCRV (0x971a…)",
-          "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
-          "decimals": 18,
           "amount": "960000000000000000",
-          "maxPerVote": "1",
+          "maxPerVote": "0",
           "excluded": []
         }
       ]
