@@ -206,98 +206,54 @@ async function _getIncentives(network, _round) {
 
 // get incentives for a specified network and depositor
 async function _getIncentivesByUser(network, user) {
+    curveGauges = await Promise.resolve(curveGauges);
     // initialize providers and contracts
     await mProviders[network].init()
     if (!contracts[network]) return null;
+    var startBlock = 17976560; // deployment block
+    var currentBlock = await providers[network].getBlockNumber();
+    /*
+        event NewIncentive(
+        uint256 _index,
+        address _token,
+        uint256 _amount,
+        uint256 indexed _round,
+        address indexed _gauge,
+        uint256 _maxPerVote,
+        address[] _excluded,
+        address indexed _depositor,
+        bool _recycled
+    );
+    */
 
-    // declare arrays we will need
-    var userRounds = [];
-    var userRoundsLength = [];
-    var userGauges = [];
-    var userGaugesLength = [];
-    var userIncentivesLengths = [];
-    var userIncentives = {};
-
-    // get user rounds and gauges counts
-    calls[network] = [];
-    calls[network].push(mContracts[network].userRoundsLength(user));
-    calls[network].push(mContracts[network].userGaugesLength(user));
-    try {
-        var result = await mProviders[network].all(calls[network]);
-        userRoundsLength = result[0];
-        userGaugesLength = result[1];
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get user rounds and gauges lengths for " + user + " " + network);
-        return null;
-    }
-
-    // get user rounds and gauges
-    calls[network] = [];
-    for (var i = 0; i < userRoundsLength; i++) {
-        calls[network].push(mContracts[network].userRounds(user, i));
-    }
-    for (var i = 0; i < userGaugesLength; i++) {
-        calls[network].push(mContracts[network].userGauges(user, i));
-    }
-    try {
-        var result = await mProviders[network].all(calls[network]);
-        // slice array since rounds were pushed first, then gauges
-        userRounds = result.slice(0, userRoundsLength);
-        userGauges = result.slice(userRoundsLength, userRoundsLength + userGaugesLength);
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get user rounds and gauges for " + user + " " + network);
-        return null;
-    }
-
-    // get user incentives lengths for each round and gauge
-    calls[network] = [];
-    for (var i = 0; i < userRounds.length; i++) {
-        for (var j = 0; j < userGauges.length; j++) {
-            calls[network].push(mContracts[network].userDepositsLength(user, userRounds[i], userGauges[j]));
+    // get all incentives where _depositor == user
+    // batch in 100000 block increments
+    var eventsAll = [];
+    while(startBlock < currentBlock){
+        endBlock = startBlock + 100000;
+        if(endBlock > currentBlock){
+            endBlock = currentBlock;
         }
+        //console.log("getting incentives from " + startBlock + " to " + endBlock);
+        eventsAll.push(contracts[network].queryFilter(contracts[network].filters.NewIncentive(null, null, null, null, null, null, null, user),startBlock,endBlock));
+        startBlock = endBlock;
     }
-    try {
-        var result = await mProviders[network].all(calls[network]);
-        for (var i = 0; i < userRounds.length; i++) {
-            // slice array since rounds and gauges were pushed, grouped by rounds, with same # gauges checked each time
-            userIncentivesLengths[i] = result.slice(i * userGauges.length, (i + 1) * userGauges.length);
-        }
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get user incentives lengths for " + user + " " + network);
-        return null;
+    eventsAll = await Promise.all(eventsAll);
+    var events = [];
+    for(var i=0; i < eventsAll.length; i++){
+        events = events.concat(eventsAll[i]);
+    }
+    userIncentives = {};
+    for(i in events) {
+        round = events[i].args._round.toString();
+        gauge = events[i].args._gauge;
+        id = events[i].args._index.toString();
+        if(userIncentives[round] == undefined) userIncentives[round] = {};
+        if(userIncentives[round][gauge] == undefined) userIncentives[round][gauge] = [];
+        userIncentives[round][gauge].push(id);
     }
 
-    // get user incentives list for each round and gauge
-    calls[network] = [];
-    for (var i = 0; i < userRounds.length; i++) {
-        for (var j = 0; j < userGauges.length; j++) {
-            for (var k = 0; k < userIncentivesLengths[i][j]; k++) {
-                // get indexes for each incentive
-                calls[network].push(mContracts[network].userDeposits(user, userRounds[i], userGauges[j], k));
-            }
-        }
-    }
-    try {
-        var result = await mProviders[network].all(calls[network]);
-        var n = 0;
-        for (var i = 0; i < userRounds.length; i++) {
-            userIncentives[userRounds[i].toString()] = {}; // initialize round object
-            for (var j = 0; j < userGauges.length; j++) {
-                userIncentives[userRounds[i].toString()][userGauges[j].toString()] = []; // initialize gauge object
-                for(var k = 0; k < userIncentivesLengths[i][j]; k++) {
-                    userIncentives[userRounds[i].toString()][userGauges[j].toString()].push(result[n].toString());
-                    n++;
-                }
-            }
-        }
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get user incentives for " + user + " " + network);
-        return null;
-    }
+
     // get deposit data for each incentive
     calls[network] = [];
     for(r in userIncentives) {
@@ -349,7 +305,7 @@ async function _getIncentivesByUser(network, user) {
 
 // update curve gauges local storage, max once per day
 async function _getCurveGauges() {
-    await Promise.resolve(curveGauges);
+    curveGauges = await Promise.resolve(curveGauges);
     if (curveGauges.lastUpdated == undefined) { curveGauges.lastUpdated = 0; }
     if (Math.floor(Date.now() / 1000) - curveGauges.lastUpdated < 60 * 60 * 24) { return; } // do not query curve api more than once per day
     var curveGaugesRaw = [];
@@ -489,7 +445,7 @@ async function _l2votesFull(_round) {
 }
 
 async function _getVlCVXAddresses(target_block, fullsync=false) {
-    Promise.resolve(vlCVXAddresses);
+    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     // 14320609 is deployment block
     if(vlCVXAddresses.lastBlock == undefined) { vlCVXAddresses = {lastBlock:14320609, userBase:{}, userDelegation: {}, userAdjusted: {}}; }
     // get all staked events in batches of 100000 blocks
@@ -553,7 +509,7 @@ async function _getVlCVXAddresses(target_block, fullsync=false) {
 }
 
 async function _getLockedBalances(target_block) {
-    Promise.resolve(vlCVXAddresses);
+    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     currentEpoch = Math.floor(Date.now()/1000/(86400*7))*86400*7; // cvx epoch is 7 days
     latestIndex = await vlCVXLocker.epochCount();
     latestIndex = Number(latestIndex)-1;
@@ -605,7 +561,7 @@ async function _getLockedBalances(target_block) {
 }
 
 async function _getDelegations(target_block) {
-    Promise.resolve(vlCVXAddresses);
+    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     addressArray = Object.keys(vlCVXAddresses.userBase);
     var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
     globalCheckList = [];
@@ -665,7 +621,7 @@ async function _getDelegations(target_block) {
 }
 
 async function _parseAddressDelegation () {
-    Promise.resolve(vlCVXAddresses);
+    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     userAdjusted = {};
     for(user in vlCVXAddresses.userBase) {
         if(vlCVXAddresses.userDelegation[user] == undefined) {
@@ -757,7 +713,7 @@ module.exports = {
         return await storage.read("vlCVXMerkles", _round);
     },
     gauges: async function () {
-        await Promise.resolve(curveGauges);
+        curveGauges = await Promise.resolve(curveGauges);
         return curveGauges.gauges; // curve gauges
     },
     // get incentives for a given round, using an optional offset from the current round
