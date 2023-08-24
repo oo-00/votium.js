@@ -1,0 +1,17 @@
+{
+  "52": {
+    "mainnet": {
+      "0x4bf3bC9446702a4c2F12A104A9C4e82C4Ccbd2f0": [
+        {
+          "index": "0",
+          "pool": "DONUT+FRAXBP (0x5F2B…)",
+          "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "decimals": 6,
+          "amount": "960000",
+          "maxPerVote": "10000",
+          "excluded": []
+        }
+      ]
+    }
+  }
+}
