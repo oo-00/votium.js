@@ -6,8 +6,7 @@ var curveGauges;
 
 async function examples() {
 
-    // Returns current or most recent round number
-    votium.round++;
+    // Returns current round number
     console.log("round: " + votium.round);
 
     // Returns supported networks
@@ -65,7 +64,7 @@ async function examples() {
     shot = await votium.updateSnapshot(votium.round, 60 * 15); // update if more than 15 minutes
     if (shot.votes == undefined) {
         console.log("Snapshot not available for round " + votium.round);
-        return;
+        shot.votes = {gauges: {}};
     }
     shot = shot.votes.gauges; // removing some unused data
     //console.log(shot);
@@ -73,6 +72,7 @@ async function examples() {
 
     console.log("----------------------\nUpdate l2 votes example")
     var l2votes = await votium.l2votes(votium.round);
+    if (l2votes == null) { l2votes = {gauges:{}}; }
     l2votes = l2votes.gauges; // removing some unused data, l2votes format == shot.votes format
     //console.log(l2votes);
     
@@ -123,7 +123,7 @@ async function examples() {
             }
 
             console.log("Gauges with rewards for round " + votium.round + ":\n");
-            console.log(gauge + ": " + curveGauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge].shortName);
             console.log("   Votes for gauge: " + vote.total);
             console.log("   Rewards for gauge:");
             for (i in incentives[chain][gauge]) {
@@ -177,12 +177,12 @@ async function examples() {
 // Get incentives by passing an offset from current round
 async function getIncentivesByOffsetExamples() {
 
-    console.log("incentives for next round");
-    var incentives = await votium.getIncentivesByOffset(1); 
+    console.log("incentives for current round");
+    var incentives = await votium.getIncentivesByOffset(); 
     for (chain in incentives) {
         console.log(chain); // which network the incentives belong to
         for (gauge in incentives[chain]) {
-            console.log(gauge + ": " + curveGauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge].shortName);
             console.log(incentives[chain][gauge]);
         }
     }
@@ -214,14 +214,14 @@ async function getIncentivesByRoundExamples() {
     for (chain in incentives) {
         console.log(chain); // which network the incentives belong to
         for (gauge in incentives[chain]) {
-            console.log(gauge + ": " + curveGauges[gauge]);
+            console.log(gauge + ": " + curveGauges[gauge].shortName);
             console.log(incentives[chain][gauge]);
         }
     }
 
     /*  Other examples
 
-        console.log("incentives for current or most recent round");
+        console.log("incentives for current round");
         var incentives = await votium.getIncentivesByRound(); // same as votium.round
         console.log(incentives);
 

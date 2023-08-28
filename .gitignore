@@ -131,3 +131,5 @@ dist
 .config.json
 package-lock.json
 .storageConfig.js
+uiFunctions.js
+tokens.json

@@ -43,7 +43,11 @@ switch(config.storageTypes[config.storageType]) {
         const db = admin.database();
         _read = async (key, suffix = "") => {
             try {
-                data = await db.ref(config.storagePaths[config.storageType][key] + suffix).once('value');
+                if(config.storagePaths[config.storageType][key] == undefined) {
+                    data = await db.ref(key + suffix).once('value'); // direct key
+                } else {
+                    data = await db.ref(config.storagePaths[config.storageType][key] + suffix).once('value');
+                }
                 return data.val();
             } catch (err) {
                 console.log(err);
