@@ -48,6 +48,7 @@ var curveGauges = storage.read("gauges"); // curve gauges
 var vlCVXAddresses = storage.read("vlCVXAddresses"); // vlCVX address list
 
 function roundEpoch(_round) { return (_round+1348) * 86400 * 14; }
+if(Math.floor(Date.now()/1000)-roundEpoch(round) > 60*60*24*5) round++; // if vote is over, default to next round
 
 // Initialize providers and votium deposit contracts (single and multicall)
 for (i in config.providers) {
@@ -181,16 +182,24 @@ async function _getIncentives(network, _round) {
     // building in the same way as we built the calls for incentivesRaw
     for (var i = 0; i < gauges.length; i++) {
         incentives[gauges[i]] = []; // initialize gauge incentive array
+        if(curveGauges.gauges[gauges[i]] == undefined) {
+            poolName = "Unknown (" + gauges[i].substr(0,6) + "...)";
+            active = false;
+        } else {
+            poolName = curveGauges.gauges[gauges[i]].shortName;
+            active = curveGauges.gauges[gauges[i]].active;
+        }
         for (var j = 0; j < incentivesLengths[i]; j++) {
             incentives[gauges[i]][j] = {
                 "index": j,
-                "pool": curveGauges.gauges[gauges[i]],
+                "pool": poolName,
                 "token": incentivesRaw[n].token,
                 "decimals": decimals[incentivesRaw[n].token],
                 "amount": incentivesRaw[n].amount.toString(),
                 "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
                 "excluded": incentivesRaw[n].excluded,
-                "depositor": incentivesRaw[n].depositor
+                "depositor": incentivesRaw[n].depositor,
+                "poolActive": active,
             };
             // if _round is earlier than current round, include additional data
             if(_round < round) {
@@ -283,7 +292,7 @@ async function _getIncentivesByUser(network, user) {
             for(i in userIncentives[r][g]) {
                 userIncentives[r][g][i] = {
                     "index": userIncentives[r][g][i],
-                    "pool": curveGauges.gauges[g],
+                    "pool": curveGauges.gauges[g].shortName,
                     "token": incentivesRaw[n].token,
                     "decimals": decimals[incentivesRaw[n].token],
                     "amount": incentivesRaw[n].amount.toString(),
@@ -321,7 +330,10 @@ async function _getCurveGauges() {
     // build curveGauges object
     curveGauges = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
     for (i in curveGaugesRaw) {
-        curveGauges.gauges[ethers.utils.getAddress(curveGaugesRaw[i].gauge)] = curveGaugesRaw[i].shortName;
+        curveGauges.gauges[ethers.utils.getAddress(curveGaugesRaw[i].gauge)] = {
+            "shortName": curveGaugesRaw[i].shortName,
+            "active": (curveGaugesRaw[i].hasNoCrv == false && curveGaugesRaw[i].is_killed == false),
+        }
     }
     // save curve gauges to storage
     storage.write("gauges", curveGauges);
@@ -333,7 +345,7 @@ async function _l2round2proposal(_round) {
     // map round to proposal
     var proposalBase = _round - 48; // starting point to match with l2 deployment
     var proposals;
-    var proposal;
+    var proposal = {};
 
     // since proposals can be replaced with new merkle data, 
     // we need to check for the newest proposal with the correct 
@@ -379,6 +391,7 @@ async function _l2votesFull(_round) {
     // initialize providers and contracts
     await mProviders["zkevm"].init()
     var proposal = await _l2round2proposal(_round);
+    if(proposal == null) return null; // return null if no proposal
     var voters;
     var votes = {};
 
@@ -706,15 +719,23 @@ async function _vlCVXTree(userBase, userAdjusted, userDelegation, target_block) 
 
 // export functions
 module.exports = {
-    round: round, // current or most recent round
+    round: round, // current round
     networks: Object.keys(contracts), // supported networks
     storageType: storage.storageType, // storage type
+    // direct storage read
+    storageRead: async function (key, suffix = "") {
+        return await storage.read(key, suffix);
+    },
     vlCVXMerkle: async function (_round = round) {
         return await storage.read("vlCVXMerkles", _round);
     },
     gauges: async function () {
         curveGauges = await Promise.resolve(curveGauges);
         return curveGauges.gauges; // curve gauges
+    },
+    // get cached incentives for a given round
+    getIncentivesCached: async function (_round = round) {
+        return await storage.read("depositData", _round);
     },
     // get incentives for a given round, using an optional offset from the current round
     getIncentivesByOffset: async function (roundOffset = 0) {
