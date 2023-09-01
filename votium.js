@@ -81,10 +81,11 @@ function bufToHex(buffer) { // buffer is an ArrayBuffer
     return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('')
 }
 
-async function _getDecimalsFromIncentives(network, incentivesRaw) {
+async function _getTokenInfoFromIncentives(network, incentivesRaw) {
 
     // get decimals for each token, this will make it easier to display amounts correctly in frontend
     var decimals = {};
+    var symbols = {};
     var tokenContracts = {};
 
     calls[network] = [];
@@ -95,14 +96,15 @@ async function _getDecimalsFromIncentives(network, incentivesRaw) {
             tokenContracts[incentivesRaw[i].token] = new Contract(incentivesRaw[i].token, erc20Abi);
             decimals[incentivesRaw[i].token] = 0; // placeholder so we don't call decimals more than once
             calls[network].push(tokenContracts[incentivesRaw[i].token].decimals());
+            calls[network].push(tokenContracts[incentivesRaw[i].token].symbol());
         }
     }
     try {
         // unmapped decimals
-        decimalsRaw = await mProviders[network].all(calls[network]);
+        infoRaw = await mProviders[network].all(calls[network]);
     } catch (e) {
         console.log("Error: " + e);
-        console.log("Could not get decimals for " + network);
+        console.log("Could not get token info for " + network);
         return null;
     }
     // reset decimals array so we can map in the same order we built
@@ -111,11 +113,14 @@ async function _getDecimalsFromIncentives(network, incentivesRaw) {
     for(i in incentivesRaw) {
         // only map decimals if we haven't already (same order as calls)
         if(decimals[incentivesRaw[i].token] == undefined) {
-            decimals[incentivesRaw[i].token] = decimalsRaw[n];
+            decimals[incentivesRaw[i].token] = infoRaw[n];
+            n++;
+            symbols[incentivesRaw[i].token] = infoRaw[n];
             n++;
         }
     }
-    return decimals;
+    info = {decimals: decimals, symbols: symbols};
+    return info;
 }
 // get incentives for a specified network and round number
 async function _getIncentives(network, _round) {
@@ -175,7 +180,9 @@ async function _getIncentives(network, _round) {
         return null;
     }
 
-    decimals = await _getDecimalsFromIncentives(network, incentivesRaw);
+    info = await _getTokenInfoFromIncentives(network, incentivesRaw);
+    decimals = info.decimals;
+    symbols = info.symbols;
 
     // build incentives object
     var n = 0; // map counter
@@ -194,6 +201,7 @@ async function _getIncentives(network, _round) {
                 "index": j,
                 "pool": poolName,
                 "token": incentivesRaw[n].token,
+                "symbol": symbols[incentivesRaw[n].token],
                 "decimals": decimals[incentivesRaw[n].token],
                 "amount": incentivesRaw[n].amount.toString(),
                 "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
@@ -282,7 +290,8 @@ async function _getIncentivesByUser(network, user) {
         return null;
     }
 
-    decimals = await _getDecimalsFromIncentives(network, incentivesRaw);
+    info = await _getTokenInfoFromIncentives(network, incentivesRaw);
+    decimals = info.decimals;
 
     // build incentives object
     var n = 0; // map counter
@@ -458,7 +467,7 @@ async function _l2votesFull(_round) {
 }
 
 async function _getVlCVXAddresses(target_block, fullsync=false) {
-    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
+    
     // 14320609 is deployment block
     if(vlCVXAddresses.lastBlock == undefined) { vlCVXAddresses = {lastBlock:14320609, userBase:{}, userDelegation: {}, userAdjusted: {}}; }
     // get all staked events in batches of 100000 blocks
@@ -522,7 +531,6 @@ async function _getVlCVXAddresses(target_block, fullsync=false) {
 }
 
 async function _getLockedBalances(target_block) {
-    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     currentEpoch = Math.floor(Date.now()/1000/(86400*7))*86400*7; // cvx epoch is 7 days
     latestIndex = await vlCVXLocker.epochCount();
     latestIndex = Number(latestIndex)-1;
@@ -574,7 +582,6 @@ async function _getLockedBalances(target_block) {
 }
 
 async function _getDelegations(target_block) {
-    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     addressArray = Object.keys(vlCVXAddresses.userBase);
     var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
     globalCheckList = [];
@@ -634,7 +641,6 @@ async function _getDelegations(target_block) {
 }
 
 async function _parseAddressDelegation () {
-    vlCVXAddresses = Promise.resolve(vlCVXAddresses);
     userAdjusted = {};
     for(user in vlCVXAddresses.userBase) {
         if(vlCVXAddresses.userDelegation[user] == undefined) {
@@ -825,9 +831,9 @@ module.exports = {
 
         // check if console argument is "--sync"
         if (fullsyncAddresses) {
-            await _getVlCVXAddresses(target_block, true);
+            vlCVXAddresses = await _getVlCVXAddresses(target_block, true);
         } else {
-            await _getVlCVXAddresses(target_block)
+            vlCVXAddresses = await _getVlCVXAddresses(target_block)
         }
         await _getLockedBalances(target_block);
         await _getDelegations(target_block);

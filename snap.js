@@ -288,8 +288,10 @@ module.exports = {
         curveGauges = await storage.read("gauges");
         gaugesReverse = {};
         for (g in curveGauges.gauges) {
-            gaugesReverse[curveGauges.gauges[g]] = g;
+            if(curveGauges.gauges[g].shortName == undefined) { continue; }
+            gaugesReverse[curveGauges.gauges[g].shortName] = g;
         }
+
         var shot = await storage.read("snapshotVoteData", _round);
         if(shot == null) { shot = {lastUpdated:0}; }
 
