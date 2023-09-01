@@ -1,5 +1,5 @@
 {
-  "lastUpdated": 1693202653,
+  "lastUpdated": 1693596793,
   "gauges": {
     "0xe9EF132a724FF731B17bd550709C38a3258Edc4e": {
       "shortName": "ibBTC+sbtcCrv (0x99AE…)",
@@ -209,10 +209,6 @@
       "shortName": "USDV+3Crv (0x52EB…)",
       "active": false
     },
-    "0x2712E14F1C4819f7aeC4ba21e321C3E4662cf6De": {
-      "shortName": "stETH+xETH (0xD4cE…)",
-      "active": false
-    },
     "0x16F780aEd4E5cAa1b0c9A3AE6F67460D4d0cfEb5": {
       "shortName": "USX+sDAI (0x5D4D…)",
       "active": false
@@ -221,12 +217,20 @@
       "shortName": "stUSDT+crvUSD (0xa089…)",
       "active": false
     },
-    "0x8b87c8d75a620Df2271eD06B161de6cf811221b6": {
-      "shortName": "WETH+pETH (0x1C5F…)",
-      "active": false
-    },
     "0x7671299eA7B4bbE4f3fD305A994e6443b4be680E": {
       "shortName": "ETH+ETHx (0x59Ab…)",
+      "active": false
+    },
+    "0x150EF43F6378eDFdEC096cd9f3293E4DF818DaeF": {
+      "shortName": "LETH+WETH (0x9A6F…)",
+      "active": false
+    },
+    "0x5439Dda1cE6A4A5222dB85bB2cAf0AB32c815Be6": {
+      "shortName": "PYUSD+FRAXBP (0x61fA…)",
+      "active": false
+    },
+    "0xF184d80915Ba7d835D941BA70cDdf93DE36517ee": {
+      "shortName": "mkUSD+FRAXBP (0x0CFe…)",
       "active": false
     },
     "0xfB389aCa09ddC676fC9D5aC3cfD2Cd133bf44E19": {
@@ -413,10 +417,6 @@
       "shortName": "crDAI+FRAXBP (0xce75…)",
       "active": false
     },
-    "0x4426027fEeb7d958498766A792AFE595b64bbFa1": {
-      "shortName": "crvUSD+fETH (0xE7e8…)",
-      "active": false
-    },
     "0x378e249F4F7007Bd90c2186240374D512B839770": {
       "shortName": "fETH+FRAXBP (0x5f5F…)",
       "active": false
@@ -425,16 +425,16 @@
       "shortName": "ETH+xETH (0x053D…)",
       "active": false
     },
-    "0x839d92046F1e62A51A2b5705ecaE41DF152545ec": {
-      "shortName": "JPEG+pETH (0x69f2…)",
-      "active": false
-    },
     "0x4bf3bC9446702a4c2F12A104A9C4e82C4Ccbd2f0": {
       "shortName": "DONUT+FRAXBP (0x5F2B…)",
       "active": false
     },
     "0x4B3a620a746C8186550fDDcE81A81726e7474767": {
       "shortName": "USDC+ALTD (0xD9DB…)",
+      "active": false
+    },
+    "0x0e5bdb5afe132D1c6A6C67f6D8eB6133dD607e36": {
+      "shortName": "mkUSD+crvUSD (0x3de2…)",
       "active": false
     },
     "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575": {
@@ -1389,6 +1389,22 @@
       "shortName": "crCrvUSD+FRAXBP (0xee3D…)",
       "active": true
     },
+    "0x839d92046F1e62A51A2b5705ecaE41DF152545ec": {
+      "shortName": "JPEG+pETH (0x69f2…)",
+      "active": true
+    },
+    "0x8b87c8d75a620Df2271eD06B161de6cf811221b6": {
+      "shortName": "WETH+pETH (0x1C5F…)",
+      "active": true
+    },
+    "0x2712E14F1C4819f7aeC4ba21e321C3E4662cf6De": {
+      "shortName": "stETH+xETH (0xD4cE…)",
+      "active": true
+    },
+    "0x4426027fEeb7d958498766A792AFE595b64bbFa1": {
+      "shortName": "crvUSD+fETH (0xE7e8…)",
+      "active": true
+    },
     "0x82d0aDea8C4CF2fc84A499b568F4C1194d63113d": {
       "shortName": "AAVE+palStkAAVE (0x4853…)",
       "active": false
@@ -1847,6 +1863,34 @@
     },
     "0x1f207d9235Ab7667d38dceef9e75862CaC6900A9": {
       "shortName": "celo-agEUR+cEUR (0xAF7E…)",
+      "active": false
+    },
+    "0x6616CCfA456F72104452341fa470E9B08A11b1aB": {
+      "shortName": "base-USDbC+axlUSDC+crvUSD (0xA450…)",
+      "active": false
+    },
+    "0x3E091A0277403446e57F25A979A46270d02488C9": {
+      "shortName": "base-WETH+cbETH (0x8E01…)",
+      "active": false
+    },
+    "0x5b33AF86f80259c651C1E2153ce4700e1B1BA070": {
+      "shortName": "base-crvUSD+tBTC+WETH (0xeC6a…)",
+      "active": false
+    },
+    "0xE9c898BA654deC2bA440392028D2e7A194E6dc3e": {
+      "shortName": "base-WETH+cbETH (0x11C1…)",
+      "active": false
+    },
+    "0x93933FA992927284e9d508339153B31eb871e1f4": {
+      "shortName": "base-crvUSD+tBTC+WETH (0x6e53…)",
+      "active": false
+    },
+    "0x89289DC2192914a9F0674f1E9A17C56456549b8A": {
+      "shortName": "base-CRV+crvUSD (0xDE37…)",
+      "active": false
+    },
+    "0xeF1Ee80374E0cBE081e9121Fe43A10497B0D321C": {
+      "shortName": "base-CRV+USDbC (0x3FCa…)",
       "active": false
     }
   }

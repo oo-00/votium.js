@@ -1,25 +1,14 @@
 {
   "52": {
     "mainnet": {
-      "0x4bf3bC9446702a4c2F12A104A9C4e82C4Ccbd2f0": [
+      "0xAB1927160EC7414C6Fa71763E2a9f3D107c126dd": [
         {
           "index": "0",
-          "pool": "DONUT+FRAXBP (0x5F2B…)",
+          "pool": "FXS+cvxFXS (0xd658…)",
           "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           "decimals": 6,
           "amount": "1920000",
-          "maxPerVote": "20000000000",
-          "excluded": []
-        }
-      ],
-      "0xfB18127c1471131468a1AaD4785c19678e521D86": [
-        {
-          "index": "1",
-          "pool": "CRV+cvxCRV (0x971a…)",
-          "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-          "decimals": 6,
-          "amount": "960000",
-          "maxPerVote": "10000",
+          "maxPerVote": "0",
           "excluded": []
         }
       ]

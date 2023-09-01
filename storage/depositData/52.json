@@ -5,47 +5,27 @@
         "index": 0,
         "pool": "CRV+cvxCRV (0x971a…)",
         "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
-        "decimals": 18,
-        "amount": "960000000000000000",
-        "maxPerVote": "0",
-        "excluded": [],
-        "depositor": "0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19",
-        "poolActive": true
-      },
-      {
-        "index": 1,
-        "pool": "CRV+cvxCRV (0x971a…)",
-        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "decimals": 6,
-        "amount": "960000",
-        "maxPerVote": "10000",
-        "excluded": [],
-        "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
-        "poolActive": true
-      },
-      {
-        "index": 2,
-        "pool": "CRV+cvxCRV (0x971a…)",
-        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
         "decimals": 18,
         "amount": "1920000000000000000",
-        "maxPerVote": "100000000",
+        "maxPerVote": "1000000000000000",
         "excluded": [],
         "depositor": "0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19",
         "poolActive": true
       }
     ],
-    "0x4bf3bC9446702a4c2F12A104A9C4e82C4Ccbd2f0": [
+    "0xAB1927160EC7414C6Fa71763E2a9f3D107c126dd": [
       {
         "index": 0,
-        "pool": "DONUT+FRAXBP (0x5F2B…)",
+        "pool": "FXS+cvxFXS (0xd658…)",
         "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
         "decimals": 6,
         "amount": "1920000",
-        "maxPerVote": "20000000000",
+        "maxPerVote": "0",
         "excluded": [],
         "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
-        "poolActive": false
+        "poolActive": true
       }
     ]
   }
