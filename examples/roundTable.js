@@ -121,27 +121,37 @@ async function buildDisplay(object) {
             }
         }
     }
+    celllengths[5]+=2;
+    celllengths[6]+=2;
+    celllengths[7]+=2;
+    celllengths[9]+=2;
 
     string = "";
     string += await buildBorders(celllengths, "top");
     for(i in rows) {
         string += vertical;
         for(var j=0;j<celllengths.length;j++) {
-            if(rows[i][j] == undefined) { rows[i][j] = ""; }
             var s = 0;
-            if(!(j > 5 && j < 9)) {
+            if(rows[i][j] == undefined) { rows[i][j] = ""; }
+            if(!(j > 5 && j <= 9)) {
                 string += rows[i][j];
-            } else if(j<8 && i != 0) {
-                string += "$";
-                s=2;
+            } else if((j<8 || j==9) && i != 0) {
+                if(rows[i][j] != "") {
+                 string += "$ ";
+                 s = 3;
+                }
             }
             for(k = s; k < celllengths[j] - rows[i][j].toString().length + 1; k++) {
                 string += " ";
             }
-            if(j > 5 && j < 9) {
+            if(j > 5 && j <= 9) {
                 string += rows[i][j];
                 if(j<8 && i != 0) {
                     string += " ";
+                } else if(j==9 && i != 0) {
+                    if(rows[i][j] != "") {
+                        string += " ";
+                    }
                 }
             }
             string += vertical;

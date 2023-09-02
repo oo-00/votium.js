@@ -27,6 +27,20 @@
         "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
         "poolActive": true
       }
+    ],
+    "0x0c58c509305a8a7fE9a6a60CEaAC6185B96ECBb7": [
+      {
+        "index": 0,
+        "pool": "FXS+cvxFXS (0x6a90…)",
+        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
+        "decimals": 6,
+        "amount": "3360000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
+        "poolActive": true
+      }
     ]
   }
 }
