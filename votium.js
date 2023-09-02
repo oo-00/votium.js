@@ -124,6 +124,7 @@ async function _getTokenInfoFromIncentives(network, incentivesRaw) {
 }
 // get incentives for a specified network and round number
 async function _getIncentives(network, _round) {
+    
     // initialize providers and contracts
     await mProviders[network].init()
     if (!contracts[network]) return null;
@@ -775,7 +776,7 @@ module.exports = {
     // update list of gauges from curve api (max once per day)
     updateCurveGauges: async function () {
         await _getCurveGauges();
-        return curveGauges.gauges;
+        return curveGauges;
     },
     // update snapshot for a given round, using an optional delay from last call
     updateSnapshot: async function (_round = round, delay = 0) {
@@ -839,5 +840,142 @@ module.exports = {
         await _getDelegations(target_block);
         [userBase, userAdjusted, userDelegation] = await _parseAddressDelegation();
         tree = await _vlCVXTree(userBase, userAdjusted, userDelegation, target_block);
+    },
+    // combine several functions to return a full round object
+    roundObject : async function (_round = round) {
+
+        curveGauges = await this.updateCurveGauges(); // grabs gauges storage and updates if data more than 24 hours old
+
+        var incentives = await this.getIncentivesByRound(_round); // get incentives for round
+
+        shot = await this.updateSnapshot(_round, 60 * 15); // update if more than 15 minutes, and not finalized
+        if (shot.votes == undefined) {
+            console.log("Snapshot not available for round " + round);
+            shot.votes = {gauges: {}};
+        }
+        shot = shot.votes.gauges; // removing some unused data
+
+        curveGauge = curveGauges.gauges;
+        
+        // get prices from coingecko
+        prices = {};
+        priceString = '';
+        for (chain in incentives) {
+            for (g in incentives[chain]) {
+                for (i in incentives[chain][g]) {
+                    if (prices[incentives[chain][g][i].token] == undefined) {
+                        prices[incentives[chain][g][i].token] = 0;
+                        priceString += ',' + incentives[chain][g][i].token;
+                    }
+                }
+            }
+        }
+        prices = await this.coingecko(priceString.substring(1));
+
+
+
+        var totalUSD = 0; // total USD available for all gauges
+        var totalConsumedUSD = 0; // total USD consumed for all gauges
+        var gaugeUSD = {}; // USD available for each gauge
+        var gaugeConsumedUSD = {}; // USD consumed for each gauge
+        var possibleTotalUSD = 0; // total USD available for all gauges, assuming 25m vlCVX voted for gauges with maxPerVote
+        var possibleGaugeUSD = {}; // USD available for each gauge, assuming 25m vlCVX voted for gauges with maxPerVote
+
+        var displayObject = {};
+        // cycle through different supported networks
+        for (chain in incentives) {
+            var totalVotes = 0; // total votes for all gauges
+            var pervls = [];
+            displayObject[chain] = {gauges: {}};
+            // cycle through different gauges
+            for (gauge in incentives[chain]) {
+                // set initial object entry values to 0
+                gaugeUSD[gauge] = 0;
+                gaugeConsumedUSD[gauge] = 0;
+                possibleGaugeUSD[gauge] = 0;
+
+                // if gauge is not in snapshot, skip
+                if (shot[gauge] == undefined) {
+                    if (curveGauge[gauge] == undefined) continue;
+                    if(curveGauge[gauge].active == false) continue;
+                    var vote = { total: 0 };
+                } else {
+                    var vote = shot[gauge]; // for readability
+                }
+                
+                displayObject[chain].gauges[curveGauge[gauge].shortName] = {};
+                displayObject[chain].gauges[curveGauge[gauge].shortName].votes = vote.total;
+                displayObject[chain].gauges[curveGauge[gauge].shortName].rewards = [];
+                totalVotes += vote.total;
+                //console.log("   Votes for gauge: " + vote.total);
+                //console.log("   Rewards for gauge:");
+                for (i in incentives[chain][gauge]) {
+                    var incentive = incentives[chain][gauge][i]; // for code readability
+                    var possibleAmount = 0; // amount of incentive available if 25m vlCVX voted for gauges with maxPerVote
+                    // convert amounts to human readable format
+                    incentive.amount = ethers.utils.formatUnits(incentive.amount, incentive.decimals);
+                    incentive.maxPerVote = ethers.utils.formatUnits(incentive.maxPerVote, incentive.decimals);
+
+                    // check if entire incentive is consumed, or if there is a maxPerVote
+                    if (incentive.maxPerVote != 0) {
+                        // if total amount is greater than maxPerVote*votes, entire reward is not consumed
+                        incentive.consumedAmount = incentive.amount > incentive.maxPerVote * vote.total ? Math.floor(incentive.maxPerVote * vote.total) : incentive.amount;
+                        // possible total USD available is based on 25m vlCVX voting for gauges with maxPerVote
+                        // check if maxPerVote*25m is greater than total amount
+                        possibleAmount = incentive.maxPerVote * 25000000 > incentive.amount ? incentive.amount : incentive.maxPerVote * 25000000;
+                        // increase possible totals
+                        possibleGaugeUSD[gauge] += possibleAmount * prices[incentive.token]; 
+                        possibleTotalUSD += possibleAmount * prices[incentive.token];
+                    } else {
+                        // if there is no maxPerVote, entire reward is consumed
+                        incentive.consumedAmount = incentive.amount;
+                        possibleAmount = incentive.amount; // readablity
+                        // increase possible totals
+                        possibleGaugeUSD[gauge] += incentive.amount * prices[incentive.token];
+                        possibleTotalUSD += incentive.amount * prices[incentive.token];
+                    }
+                    var total = incentive.amount * prices[incentive.token]; // readablity
+                    var consumed = incentive.consumedAmount * prices[incentive.token];
+                    
+                    // increase totals
+                    gaugeConsumedUSD[gauge] += consumed;
+                    gaugeUSD[gauge] += total;
+                    totalConsumedUSD += consumed;
+                    totalUSD += total;
+
+                    displayObject[chain].gauges[curveGauge[gauge].shortName].rewards.push({
+                        symbol: incentive.symbol,
+                        consumedAmount: incentive.consumedAmount,
+                        amount: incentive.amount,
+                        maxPerVote: incentive.maxPerVote,
+                        totalUSD: total,
+                        consumedUSD: consumed,
+                        possibleTotalUSD: possibleAmount * prices[incentive.token],
+                    });
+                }
+                var per;
+                if(vote.total == 0) {
+                    per = 0;
+                } else {
+                    per = gaugeConsumedUSD[gauge] / vote.total;
+                    pervls.push(per);
+                }
+                displayObject[chain].gauges[curveGauge[gauge].shortName].totals = {
+                    consumedUSD: gaugeConsumedUSD[gauge],
+                    totalUSD: gaugeUSD[gauge],
+                    possibleTotalUSD: possibleGaugeUSD[gauge],
+                    perVlCVX: per
+                }
+            }
+            displayObject[chain].totals = {
+                votes : totalVotes,
+                consumedUSD: totalConsumedUSD,
+                totalUSD: totalUSD,
+                possibleTotalUSD: possibleTotalUSD,
+                perVlCVX: totalConsumedUSD / totalVotes,
+                perVlCVXMedian: pervls.sort()[Math.floor(pervls.length/2)]
+            }
+        }
+        return displayObject;
     }
 }
