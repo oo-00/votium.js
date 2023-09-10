@@ -967,6 +967,11 @@ module.exports = {
                     perVlCVX: per
                 }
             }
+
+            if(pervls.length == 0) { // to view table before votes come in
+                pervls.push(0);
+            }
+            
             displayObject[chain].totals = {
                 votes : totalVotes,
                 consumedUSD: totalConsumedUSD,
