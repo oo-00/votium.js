@@ -20,6 +20,11 @@ module.exports = {
             "l2voteData": "/storage/l2voteData/",
             "vlCVXAddresses": "/storage/vlCVXAddresses", // file
             "vlCVXMerkles": "/storage/vlCVXMerkles/",
+            "prismaGauges": "/storage/prismaGauges",
+            "prismaDepositData": "/storage/prismaDepositData/",
+            "prismaUserDeposits": "/storage/prismaUserDeposits/",
+            "prismaSnapshotVoteData": "/storage/prismaSnapshotVoteData/",
+
         },
         // Firebase paths (only used if storageType is 1)
         {
@@ -30,6 +35,11 @@ module.exports = {
             "l2voteData": "v2/l2voteData/",
             "vlCVXAddresses": "v2/vlCVXAddresses", // direct key
             "vlCVXMerkles": "v2/vlCVXMerkles/",
+            "prismaGauges": "v2prisma/gauges",
+            "prismaDepositData": "v2prisma/depositData/",
+            "prismaUserDeposits": "v2prisma/userDeposits/",
+            "prismaSnapshotVoteData": "v2prisma/snapshotVoteData/",
+
         }
     ],
 
