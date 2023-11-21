@@ -1,0 +1,73 @@
+{
+  "gauges": {
+    "0": {
+      "active": true,
+      "shortName": "Stability Pool"
+    },
+    "1": {
+      "active": true,
+      "shortName": "debt-liquid staked Ether 2.0"
+    },
+    "2": {
+      "active": true,
+      "shortName": "mint-liquid staked Ether 2.0"
+    },
+    "3": {
+      "active": true,
+      "shortName": "debt-Rocket Pool ETH"
+    },
+    "4": {
+      "active": true,
+      "shortName": "mint-Rocket Pool ETH"
+    },
+    "5": {
+      "active": true,
+      "shortName": "debt-Coinbase Staked ETH"
+    },
+    "6": {
+      "active": true,
+      "shortName": "mint-Coinbase Staked ETH"
+    },
+    "7": {
+      "active": true,
+      "shortName": "debt-Staked Frax Ether"
+    },
+    "8": {
+      "active": true,
+      "shortName": "mint-Staked Frax Ether"
+    },
+    "9": {
+      "active": true,
+      "shortName": "Prisma mkUSDFRAXBP-f Curve"
+    },
+    "10": {
+      "active": true,
+      "shortName": "Prisma mkUSDFRAXBP-f Convex"
+    },
+    "11": {
+      "active": true,
+      "shortName": "Prisma mkcrvUSD-f Convex"
+    },
+    "12": {
+      "active": true,
+      "shortName": "Prisma mkcrvUSD-f Curve"
+    },
+    "13": {
+      "active": true,
+      "shortName": "Prisma mkusdETH-f Curve"
+    },
+    "14": {
+      "active": true,
+      "shortName": "Prisma mkusdETH-f Convex"
+    },
+    "15": {
+      "active": true,
+      "shortName": "Curve.fi : PRISMA/ETH"
+    },
+    "16": {
+      "active": true,
+      "shortName": "Prisma PRISMA/ETH Convex"
+    }
+  },
+  "lastUpdated": 1700515043
+}

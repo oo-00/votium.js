@@ -1,0 +1,140 @@
+{
+  "53": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078454",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "4873846153846154078454",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "54": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078454",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "4873846153846154078454",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "55": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "4873846153846154078452",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "56": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "4873846153846154078452",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "57": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "4873846153846154078452",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "58": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "0",
+          "recycled": "0",
+          "depositor": "0xB27DC5f8286f063F11491c8f349053cB37718bea"
+        }
+      ]
+    }
+  },
+  "59": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": []
+        }
+      ]
+    }
+  },
+  "60": {
+    "mainnet": {
+      "0x5A8fa46ebb404494D718786e55c4E043337B10bF": [
+        {
+          "index": "0",
+          "pool": "ETH+CNC (0x838a…)",
+          "token": "0x9aE380F0272E2162340a5bB646c354271c0F5cFC",
+          "decimals": 18,
+          "amount": "4873846153846154078452",
+          "maxPerVote": "0",
+          "excluded": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "mainnet": {
+    "0x0c58c509305a8a7fE9a6a60CEaAC6185B96ECBb7": [
+      {
+        "index": 0,
+        "pool": "FXS+cvxFXS (0x6a90…)",
+        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
+        "decimals": 6,
+        "amount": "3360000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
+        "poolActive": true
+      }
+    ],
+    "0xfB18127c1471131468a1AaD4785c19678e521D86": [
+      {
+        "index": 0,
+        "pool": "CRV+cvxCRV (0x971a…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "1920000000000000000",
+        "maxPerVote": "1000000000000000",
+        "excluded": [],
+        "depositor": "0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19",
+        "poolActive": true
+      },
+      {
+        "index": 1,
+        "pool": "CRV+cvxCRV (0x971a…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "240000000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0xAdE9e51C9E23d64E538A7A38656B78aB6Bcc349e",
+        "poolActive": true
+      }
+    ]
+  }
+}
