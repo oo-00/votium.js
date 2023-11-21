@@ -4,6 +4,7 @@ const storage = require('./storageHandler.js');
 const config = require('./.config.json');
 const deployments = require('./deployments.json');
 const depositAbi = require('./abis/votium.json');
+const depositVlcvxPrismaAbi = require('./abis/votiumVlCVXPrisma.json');
 const erc20Abi = require('./abis/erc20.json');
 const l2Abi = require('./abis/l2platform.json');
 const lockerAbi = require('./abis/locker.json');
@@ -31,26 +32,34 @@ setMulticallAddress(1101, "0xcA11bde05977b3631167028862bE2a173976CA11");
 var dater; // eth-dater instance, not initialized until mainnet provider is initialized
 
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
-const curveGaugeEndpoint = "https://api.curve.fi/api/getAllGauges";
+
+const GaugeEndpoint = ["https://api.curve.fi/api/getAllGauges", "https://api.prismafinance.com/api/v1/emissionVotes"];
 
 var calls = {};
 var providers = {};
 var mProviders = {};
-var contracts = {};
-var mContracts = {};
+var contracts = [{},{}];
+var mContracts = [{},{}];
 var l2platform;
 var ml2platform;
 var vlCVXLocker;
 var delegationRegistry;
 var querySize = 1000;
-var round = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
-var curveGauges = storage.read("gauges"); // curve gauges
+var round = [];
+round[0] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
+round[1] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1405;
+var Gauges = [];
+Gauges[0] = storage.read("gauges"); // curve gauges
+Gauges[1] = storage.read("prismaGauges"); // prisma receivers
 var vlCVXAddresses = storage.read("vlCVXAddresses"); // vlCVX address list
 
 function roundEpoch(_round) { return (_round+1348) * 86400 * 14; }
-if(Math.floor(Date.now()/1000)-roundEpoch(round) > 60*60*24*5) round++; // if vote is over, default to next round
+for(i in round) {
+    if(Math.floor(Date.now()/1000)-roundEpoch(round[i]) > 60*60*24*5) round[i]++; // if vote is over, default to next round
+}
 
 // Initialize providers and votium deposit contracts (single and multicall)
+
 for (i in config.providers) {
     // skip if provider is not defined
     if (config.providers[i] == "") continue;
@@ -68,9 +77,14 @@ for (i in config.providers) {
             vlCVXmLocker = new MContract(config.vlCVXLocker, lockerAbi); // needs archive version of multicall
             delegationRegistry = new MContract(config.delegationRegistry, delegationAbi); // 
         }
-        if(deployments[i] == "") continue;
-        contracts[i] = new ethers.Contract(deployments[i], depositAbi, providers[i]);
-        mContracts[i] = new Contract(deployments[i], depositAbi);
+        if(deployments.vlcvxCurveFrax[i] != "") {
+            contracts[0][i] = new ethers.Contract(deployments.vlcvxCurveFrax[i], depositAbi, providers[i]);
+            mContracts[0][i] = new Contract(deployments.vlcvxCurveFrax[i], depositAbi);
+        }
+        if(deployments.vlcvxPrisma[i] != "") {
+            contracts[1][i]  = new ethers.Contract(deployments.vlcvxPrisma[i], depositVlcvxPrismaAbi, providers[i]);
+            mContracts[1][i]  = new Contract(deployments.vlcvxPrisma[i], depositVlcvxPrismaAbi);
+        }
     } catch (e) {
         console.log("Error: " + e);
         console.log("Could not connect to " + i);
@@ -123,11 +137,13 @@ async function _getTokenInfoFromIncentives(network, incentivesRaw) {
     return info;
 }
 // get incentives for a specified network and round number
-async function _getIncentives(network, _round) {
+async function _getIncentives(network, _round, platform=0) {
     
     // initialize providers and contracts
     await mProviders[network].init()
-    if (!contracts[network]) return null;
+    gaugeList = Gauges[platform];
+
+    if (!contracts[platform][network]) return null;
 
     // declare arrays we will need
     var gauges = [];
@@ -135,12 +151,12 @@ async function _getIncentives(network, _round) {
     var incentivesRaw = [];
     var incentivesLengths = [];
     // single call, since we're dealing with only 1 round
-    var gaugesLength = await contracts[network].gaugesLength(_round); 
+    var gaugesLength = await contracts[platform][network].gaugesLength(_round); 
 
     // get gauges for round
     calls[network] = [];
     for (var i = 0; i < gaugesLength; i++) {
-        calls[network].push(mContracts[network].roundGauges(_round, i));
+        calls[network].push(mContracts[platform][network].roundGauges(_round, i));
     }
     try {
         gauges = await mProviders[network].all(calls[network]);
@@ -153,7 +169,7 @@ async function _getIncentives(network, _round) {
     // get incentives lengths for each gauge
     calls[network] = [];
     for (var i = 0; i < gauges.length; i++) {
-        calls[network].push(mContracts[network].incentivesLength(_round, gauges[i]));
+        calls[network].push(mContracts[platform][network].incentivesLength(_round, gauges[i]));
     }
     try {
         incentivesLengths = await mProviders[network].all(calls[network]);
@@ -163,12 +179,11 @@ async function _getIncentives(network, _round) {
         console.log("Could not get incentives lengths for " + network + " round " + _round + " gauge " + gauges[i]);
         return null;
     }
-
     // get all incentives for each gauge
     calls[network] = [];
     for (var i = 0; i < gauges.length; i++) {
         for (var j = 0; j < incentivesLengths[i]; j++) {
-            calls[network].push(mContracts[network].viewIncentive(_round, gauges[i], j));
+            calls[network].push(mContracts[platform][network].viewIncentive(_round, gauges[i], j));
         }
     }
     try {
@@ -190,12 +205,12 @@ async function _getIncentives(network, _round) {
     // building in the same way as we built the calls for incentivesRaw
     for (var i = 0; i < gauges.length; i++) {
         incentives[gauges[i]] = []; // initialize gauge incentive array
-        if(curveGauges.gauges[gauges[i]] == undefined) {
+        if(gaugeList.gauges[gauges[i]] == undefined) {
             poolName = "Unknown (" + gauges[i].substr(0,6) + "...)";
             active = false;
         } else {
-            poolName = curveGauges.gauges[gauges[i]].shortName;
-            active = curveGauges.gauges[gauges[i]].active;
+            poolName = gaugeList.gauges[gauges[i]].shortName;
+            active = gaugeList.gauges[gauges[i]].active;
         }
         for (var j = 0; j < incentivesLengths[i]; j++) {
             incentives[gauges[i]][j] = {
@@ -223,26 +238,17 @@ async function _getIncentives(network, _round) {
 }
 
 // get incentives for a specified network and depositor
-async function _getIncentivesByUser(network, user) {
-    curveGauges = await Promise.resolve(curveGauges);
+async function _getIncentivesByUser(network, user, platform=0) {
     // initialize providers and contracts
     await mProviders[network].init()
-    if (!contracts[network]) return null;
+    gaugeList = Gauges[platform];
+
+    if (!contracts[platform][network]) return null;
+    
+
     var startBlock = 17976560; // deployment block
     var currentBlock = await providers[network].getBlockNumber();
-    /*
-        event NewIncentive(
-        uint256 _index,
-        address _token,
-        uint256 _amount,
-        uint256 indexed _round,
-        address indexed _gauge,
-        uint256 _maxPerVote,
-        address[] _excluded,
-        address indexed _depositor,
-        bool _recycled
-    );
-    */
+
 
     // get all incentives where _depositor == user
     // batch in 100000 block increments
@@ -253,7 +259,7 @@ async function _getIncentivesByUser(network, user) {
             endBlock = currentBlock;
         }
         //console.log("getting incentives from " + startBlock + " to " + endBlock);
-        eventsAll.push(contracts[network].queryFilter(contracts[network].filters.NewIncentive(null, null, null, null, null, null, null, user),startBlock,endBlock));
+        eventsAll.push(contracts[platform][network].queryFilter(contracts[platform][network].filters.NewIncentive(null, null, null, null, null, null, null, user),startBlock,endBlock));
         startBlock = endBlock;
     }
     eventsAll = await Promise.all(eventsAll);
@@ -263,12 +269,12 @@ async function _getIncentivesByUser(network, user) {
     }
     userIncentives = {};
     for(i in events) {
-        round = events[i].args._round.toString();
+        roundd = events[i].args._round.toString();
         gauge = events[i].args._gauge;
         id = events[i].args._index.toString();
-        if(userIncentives[round] == undefined) userIncentives[round] = {};
-        if(userIncentives[round][gauge] == undefined) userIncentives[round][gauge] = [];
-        userIncentives[round][gauge].push(id);
+        if(userIncentives[roundd] == undefined) userIncentives[roundd] = {};
+        if(userIncentives[roundd][gauge] == undefined) userIncentives[roundd][gauge] = [];
+        userIncentives[roundd][gauge].push(id);
     }
 
 
@@ -277,7 +283,7 @@ async function _getIncentivesByUser(network, user) {
     for(r in userIncentives) {
         for(g in userIncentives[r]) {
             for(i in userIncentives[r][g]) {
-                calls[network].push(mContracts[network].viewIncentive(r, g, userIncentives[r][g][i]));
+                calls[network].push(mContracts[platform][network].viewIncentive(r, g, userIncentives[r][g][i]));
             }
         }
     }
@@ -302,7 +308,7 @@ async function _getIncentivesByUser(network, user) {
             for(i in userIncentives[r][g]) {
                 userIncentives[r][g][i] = {
                     "index": userIncentives[r][g][i],
-                    "pool": curveGauges.gauges[g].shortName,
+                    "pool": gaugeList.gauges[g].shortName,
                     "token": incentivesRaw[n].token,
                     "decimals": decimals[incentivesRaw[n].token],
                     "amount": incentivesRaw[n].amount.toString(),
@@ -323,30 +329,55 @@ async function _getIncentivesByUser(network, user) {
 }
 
 // update curve gauges local storage, max once per day
-async function _getCurveGauges() {
-    curveGauges = await Promise.resolve(curveGauges);
-    if (curveGauges.lastUpdated == undefined) { curveGauges.lastUpdated = 0; }
-    if (Math.floor(Date.now() / 1000) - curveGauges.lastUpdated < 60 * 60 * 24) { return; } // do not query curve api more than once per day
-    var curveGaugesRaw = [];
+async function _getGauges(platform=0) {
+    Gauges[platform] = await Promise.resolve(Gauges[platform]);
+    if (Gauges[platform].lastUpdated == undefined) { Gauges[platform].lastUpdated = 0; }
+    if (Math.floor(Date.now() / 1000) - Gauges[platform].lastUpdated < 60 * 60 * 24) { return; } // do not query curve api more than once per day
+    var GaugesRaw = [];
     try {
-        curveGaugesRaw = await fetch(curveGaugeEndpoint).then(res => res.json());
+        GaugesRaw = await fetch(GaugeEndpoint[platform]).then(res => res.json());
     } catch (e) {
         console.log("Error: " + e);
         console.log("Could not get curve gauges");
         return null;
     }
-    if (curveGaugesRaw.success != true) { return; } // do not update if curve api returns error
-    curveGaugesRaw = curveGaugesRaw.data; // remove success and data keys
-    // build curveGauges object
-    curveGauges = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
-    for (i in curveGaugesRaw) {
-        curveGauges.gauges[ethers.utils.getAddress(curveGaugesRaw[i].gauge)] = {
-            "shortName": curveGaugesRaw[i].shortName,
-            "active": (curveGaugesRaw[i].hasNoCrv == false && curveGaugesRaw[i].is_killed == false),
+    if (GaugesRaw.success != true) { return; } // do not update if curve api returns error
+    GaugesRaw = GaugesRaw.data; // remove success and data keys
+    // build Gauges[platform] object
+    Gauges[platform] = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
+    if(platform == 0) {
+        for (i in GaugesRaw) {
+            Gauges[platform].gauges[ethers.utils.getAddress(GaugesRaw[i].gauge)] = {
+                "shortName": GaugesRaw[i].shortName,
+                "active": (GaugesRaw[i].hasNoCrv == false && GaugesRaw[i].is_killed == false),
+            }
         }
+        if(Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] == undefined) {
+            Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] = {
+                "shortName": "VeFunder-vyper",
+                "active": true
+            }
+        }
+        pointer = "gauges";
+    } else if(platform == 1) {
+        var gauge = {};
+        for (i in GaugesRaw.receiverToWeights) {
+            if(GaugesRaw.receiverToWeights[i].weights.length > 1) {
+                for(w in GaugesRaw.receiverToWeights[i].weights) {
+                    gauge[GaugesRaw.receiverToWeights[i].weights[w].id] = {active:GaugesRaw.receiverToWeights[i].isActive, shortName:GaugesRaw.receiverToWeights[i].weights[w].type+"-"+GaugesRaw.receiverToWeights[i].name};
+                }
+            } else {
+                gauge[GaugesRaw.receiverToWeights[i].weights[0].id] = {active:GaugesRaw.receiverToWeights[i].isActive, shortName:GaugesRaw.receiverToWeights[i].name};
+            }
+        }
+        for(i in gauge) {
+            gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "");
+        }
+        Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
+        pointer = "prismaGauges";
     }
-    // save curve gauges to storage
-    storage.write("gauges", curveGauges);
+    // save gauges to storage
+    storage.write(pointer, Gauges[platform]);
 }
 
 async function _l2round2proposal(_round) {
@@ -726,39 +757,51 @@ async function _vlCVXTree(userBase, userAdjusted, userDelegation, target_block) 
 
 // export functions
 module.exports = {
-    round: round, // current round
-    networks: Object.keys(contracts), // supported networks
+    round: function (platform=0) {
+        return round[platform]; // current round
+    },
+    networks: function (platform=0) {
+        return Object.keys(contracts[platform]); // supported networks
+    },
     storageType: storage.storageType, // storage type
     // direct storage read
     storageRead: async function (key, suffix = "") {
         return await storage.read(key, suffix);
     },
-    vlCVXMerkle: async function (_round = round) {
+    vlCVXMerkle: async function (_round = 0) {
+        if(_round == 0) _round = this.round();
         return await storage.read("vlCVXMerkles", _round);
     },
-    gauges: async function () {
-        curveGauges = await Promise.resolve(curveGauges);
-        return curveGauges.gauges; // curve gauges
+    gauges: async function (platform=0) {
+        GaugesRetern = await Promise.resolve(Gauges[platform]);
+        return GaugesReturn.gauges;
     },
     // get cached incentives for a given round
-    getIncentivesCached: async function (_round = round) {
-        return await storage.read("depositData", _round);
+    getIncentivesCached: async function (_round = 0, platform=0) {
+        if(_round == 0) _round = this.round(platform);
+        if(platform == 0) {
+            return await storage.read("depositData", _round);
+        } else if(platform == 1) {
+            return await storage.read("prismaDepositData", _round);
+        }
     },
     // get incentives for a given round, using an optional offset from the current round
-    getIncentivesByOffset: async function (roundOffset = 0) {
-        return await this.getIncentivesByRound(round + roundOffset);
+    getIncentivesByOffset: async function (roundOffset = 0, platform=0) {
+        roundd = this.round(platform);
+        return await this.getIncentivesByRound(roundd + roundOffset, platform);
     },
     // get incentives for a given round
-    getIncentivesByRound: async function (_round = round) {
+    getIncentivesByRound: async function (_round = 0, platform=0) {
+        if(_round == 0) _round = this.round(platform);
         var incentives = {};
         var promises = [];
         // batch promises for each network
-        for (chain in contracts) {
-            promises.push(_getIncentives(chain, _round));
+        for (chain in contracts[platform]) {
+            promises.push(_getIncentives(chain, _round, platform));
         }
         var results = await Promise.all(promises);
         var n = 0; // map counter
-        for (chain in contracts) {
+        for (chain in contracts[platform]) {
             if (results[n] == null) { n++; continue; } // skip if null
             if(!incentives[chain]) incentives[chain] = {}; // initialize chain object
             for (j in results[n]) {
@@ -770,22 +813,28 @@ module.exports = {
             n++; // iterate through chains
         }
         // save to storage
-        await storage.write("depositData", incentives, _round);
+        if(platform == 0) {
+            await storage.write("depositData", incentives, _round);
+        } else if(platform == 1) {
+            await storage.write("prismaDepositData", incentives, _round);
+        }
         return incentives;
     },
-    // update list of gauges from curve api (max once per day)
-    updateCurveGauges: async function () {
-        await _getCurveGauges();
-        return curveGauges;
+    // update list of gauges from platform api (max once per day)
+    updateGauges: async function (platform=0) {
+        await _getGauges(platform);
+        return Gauges[platform];
     },
     // update snapshot for a given round, using an optional delay from last call
-    updateSnapshot: async function (_round = round, delay = 0) {
-        var shot = await snap.updateSnapshot(delay, _round);
+    updateSnapshot: async function (_round = 0, delay = 0, platform=0) {
+        if(_round == 0) _round = this.round(platform);
+        var shot = await snap.updateSnapshot(delay, _round, platform);
         return shot;
     },
     // get l2 votes for a given round, in the same format as snapshot function
-    l2votes: async function (_round = round) {
-        return await _l2votesFull(_round);
+    l2votes: async function (_round = 0, platform=0) {
+        if(_round == 0) _round = this.round(platform);
+        return await _l2votesFull(_round, platform);
     },
     // get prices from coingecko (not a perfect solution, but gives a rough estimate)
     coingecko: async function (tokenString) {
@@ -798,15 +847,15 @@ module.exports = {
         return formatted;
     },
     // get all incentive ids for a given user
-    getIncentivesByUser: async function (user) {
+    getIncentivesByUser: async function (user, platform=0) {
         var promises = [];
-        for (i in contracts) {
-            promises.push(_getIncentivesByUser(i, user));
+        for (i in contracts[platform]) {
+            promises.push(_getIncentivesByUser(i, user, platform));
         }
         var results = await Promise.all(promises);
         var incentives = {};
         var n = 0; // map counter
-        for(i in contracts) {
+        for(i in contracts[platform]) {
             for(r in results[n]) {
                 if(!incentives[r]) incentives[r] = {};
                 if(!incentives[r][i]) incentives[r][i] = {};
@@ -817,7 +866,11 @@ module.exports = {
             n++;
         }
         // save to storage
-        await storage.write("userDeposits", incentives, user.toLowerCase());
+        if(platform == 0) {
+            await storage.write("userDeposits", incentives, user.toLowerCase());
+        } else if(platform == 1) {
+            await storage.write("prismaUserDeposits", incentives, user.toLowerCase());
+        }
         return incentives;
     },
     generateVlCVXMerkle: async function (fullsyncAddresses=false) {
@@ -842,20 +895,20 @@ module.exports = {
         tree = await _vlCVXTree(userBase, userAdjusted, userDelegation, target_block);
     },
     // combine several functions to return a full round object
-    roundObject : async function (_round = round) {
+    roundObject : async function (_round = 0, platform=0) {
 
-        curveGauges = await this.updateCurveGauges(); // grabs gauges storage and updates if data more than 24 hours old
+        if(_round == 0) _round = this.round(platform);
+        Gauges[platform] = await this.updateGauges(platform); // grabs gauges storage and updates if data more than 24 hours old
+        var incentives = await this.getIncentivesByRound(_round, platform); // get incentives for round
 
-        var incentives = await this.getIncentivesByRound(_round); // get incentives for round
-
-        shot = await this.updateSnapshot(_round, 60 * 15); // update if more than 15 minutes, and not finalized
+        shot = await this.updateSnapshot(_round, 60 * 15, platform); // update if more than 15 minutes, and not finalized
         if (shot.votes == undefined) {
-            console.log("Snapshot not available for round " + round);
+            console.log("Snapshot not available for round " + _round + ", platform " + platform);
             shot.votes = {gauges: {}};
         }
         shot = shot.votes.gauges; // removing some unused data
 
-        curveGauge = curveGauges.gauges;
+        Gauge = Gauges[platform].gauges;
         
         // get prices from coingecko
         prices = {};
@@ -896,16 +949,16 @@ module.exports = {
 
                 // if gauge is not in snapshot, skip
                 if (shot[gauge] == undefined) {
-                    if (curveGauge[gauge] == undefined) continue;
-                    if(curveGauge[gauge].active == false) continue;
+                    if (Gauge[gauge] == undefined) continue;
+                    if(Gauge[gauge].active == false) continue;
                     var vote = { total: 0 };
                 } else {
                     var vote = shot[gauge]; // for readability
                 }
                 
-                displayObject[chain].gauges[curveGauge[gauge].shortName] = {};
-                displayObject[chain].gauges[curveGauge[gauge].shortName].votes = vote.total;
-                displayObject[chain].gauges[curveGauge[gauge].shortName].rewards = [];
+                displayObject[chain].gauges[Gauge[gauge].shortName] = {};
+                displayObject[chain].gauges[Gauge[gauge].shortName].votes = vote.total;
+                displayObject[chain].gauges[Gauge[gauge].shortName].rewards = [];
                 totalVotes += vote.total;
                 //console.log("   Votes for gauge: " + vote.total);
                 //console.log("   Rewards for gauge:");
@@ -943,7 +996,7 @@ module.exports = {
                     totalConsumedUSD += consumed;
                     totalUSD += total;
 
-                    displayObject[chain].gauges[curveGauge[gauge].shortName].rewards.push({
+                    displayObject[chain].gauges[Gauge[gauge].shortName].rewards.push({
                         symbol: incentive.symbol,
                         consumedAmount: incentive.consumedAmount,
                         amount: incentive.amount,
@@ -960,7 +1013,7 @@ module.exports = {
                     per = gaugeConsumedUSD[gauge] / vote.total;
                     pervls.push(per);
                 }
-                displayObject[chain].gauges[curveGauge[gauge].shortName].totals = {
+                displayObject[chain].gauges[Gauge[gauge].shortName].totals = {
                     consumedUSD: gaugeConsumedUSD[gauge],
                     totalUSD: gaugeUSD[gauge],
                     possibleTotalUSD: possibleGaugeUSD[gauge],
