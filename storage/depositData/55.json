@@ -1,0 +1,32 @@
+{
+  "mainnet": {
+    "0x740BA8aa0052E07b925908B380248cb03f3DE5cB": [
+      {
+        "index": 0,
+        "pool": "alUSD+FRAXBP (0xB30d…)",
+        "token": "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+        "symbol": "ALCX",
+        "decimals": 18,
+        "amount": "5760000000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x9e2b6378ee8ad2A4A95Fe481d63CAba8FB0EBBF9",
+        "poolActive": true
+      }
+    ],
+    "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477": [
+      {
+        "index": 0,
+        "pool": "alUSD+3Crv (0x43b4…)",
+        "token": "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+        "symbol": "ALCX",
+        "decimals": 18,
+        "amount": "480000000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x9e2b6378ee8ad2A4A95Fe481d63CAba8FB0EBBF9",
+        "poolActive": true
+      }
+    ]
+  }
+}

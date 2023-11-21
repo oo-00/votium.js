@@ -1,5 +1,5 @@
 {
-  "lastUpdated": 1693596793,
+  "lastUpdated": 1700520719,
   "gauges": {
     "0xe9EF132a724FF731B17bd550709C38a3258Edc4e": {
       "shortName": "ibBTC+sbtcCrv (0x99AE…)",
@@ -217,20 +217,68 @@
       "shortName": "stUSDT+crvUSD (0xa089…)",
       "active": false
     },
-    "0x7671299eA7B4bbE4f3fD305A994e6443b4be680E": {
-      "shortName": "ETH+ETHx (0x59Ab…)",
+    "0x59063699125def4aA6D3Dbf384E1144BBb1083a1": {
+      "shortName": "eUSD+3Crv (0x2673…)",
       "active": false
     },
     "0x150EF43F6378eDFdEC096cd9f3293E4DF818DaeF": {
       "shortName": "LETH+WETH (0x9A6F…)",
       "active": false
     },
-    "0x5439Dda1cE6A4A5222dB85bB2cAf0AB32c815Be6": {
-      "shortName": "PYUSD+FRAXBP (0x61fA…)",
+    "0xc41cA7342a4225B9a6ae6484999EC4333382BA6B": {
+      "shortName": "3SPool+3Crv (0x0ce6…)",
       "active": false
     },
-    "0xF184d80915Ba7d835D941BA70cDdf93DE36517ee": {
-      "shortName": "mkUSD+FRAXBP (0x0CFe…)",
+    "0xbbE32c1292A4f1DB671F1A6111F2746546147FD6": {
+      "shortName": "PYUSD+crvUSD (0xC1E8…)",
+      "active": false
+    },
+    "0x8053028f4F5EE076c5355f907c7A844D03c6f88A": {
+      "shortName": "crvUSD+PYUSD (0x7Dc1…)",
+      "active": false
+    },
+    "0x4647aF642408AF64fD3Cd5d9C8366f56f4dF3dd2": {
+      "shortName": "sUSD+snxUSD+wUSDA (0x5eC5…)",
+      "active": false
+    },
+    "0x641ab0176d9D8fDCE8E4C174Bb7D6c5D566D5204": {
+      "shortName": "CVX+bentCVX (0xFFa6…)",
+      "active": false
+    },
+    "0xd99a5bFCCed8c706f989Ae8e42B4f6D162e81F3E": {
+      "shortName": "thUSD+crvUSD (0xe547…)",
+      "active": false
+    },
+    "0xbDe0c2c28383f9A8E2B7F22247ADB2b472D9F7B5": {
+      "shortName": "thUSD+3Crv (0x8d6e…)",
+      "active": false
+    },
+    "0x1C43E3361671b215e3027746Fe2754bc6D54ad06": {
+      "shortName": "USDe+3Crv (0xB28d…)",
+      "active": false
+    },
+    "0x8943179A925aec1Be3eA3D8E5F57c3fED5E7b5fE": {
+      "shortName": "USDe+3Crv (0x2237…)",
+      "active": false
+    },
+    "0xcdA17b74Df894603AbdDA2De9255167BaA6Dd998": {
+      "shortName": "stETH+BEAN (0xB4c7…)",
+      "active": false
+    },
+    "0x9565c64C826FC4Af6d63c14Bbd5b06ecAc3e4610": {
+      "shortName": "PRISMA+yPRISMA (0xC2d5…)",
+      "active": false
+    },
+    "0xf1ce237a1E1a88F6e289CD7998A826138AEB30b0": {
+      "shortName": "PRISMA+yPRISMA (0x6983…)",
+      "active": false
+    },
+    "0xc33098ceB5C5A3d471802333Cfc98Ac78acAb4CA": {
+      "shortName": "MIM+USDV (0x21B4…)",
+      "active": false
+    },
+    "0xF7F882A2C499B9E229da45A0259b34dFAB619b39": {
+      "shortName": "crvUSD+USDLR (0x602a…)",
       "active": false
     },
     "0xfB389aCa09ddC676fC9D5aC3cfD2Cd133bf44E19": {
@@ -329,6 +377,10 @@
       "shortName": "ALCX+CRV (0x87Ae…)",
       "active": false
     },
+    "0x2e1419Ba23F560260013ECa54FDa0e4d8C91Ab29": {
+      "shortName": "eUSD+USDC (0x880F…)",
+      "active": false
+    },
     "0xF2FFccFfab6A9116D4F9206A543BC94726f5302A": {
       "shortName": "safETH+ETH (0x0249…)",
       "active": false
@@ -417,14 +469,6 @@
       "shortName": "crDAI+FRAXBP (0xce75…)",
       "active": false
     },
-    "0x378e249F4F7007Bd90c2186240374D512B839770": {
-      "shortName": "fETH+FRAXBP (0x5f5F…)",
-      "active": false
-    },
-    "0xD491639539c7434F3a788f6C88e818e5d7a552e9": {
-      "shortName": "ETH+xETH (0x053D…)",
-      "active": false
-    },
     "0x4bf3bC9446702a4c2F12A104A9C4e82C4Ccbd2f0": {
       "shortName": "DONUT+FRAXBP (0x5F2B…)",
       "active": false
@@ -433,8 +477,124 @@
       "shortName": "USDC+ALTD (0xD9DB…)",
       "active": false
     },
-    "0x0e5bdb5afe132D1c6A6C67f6D8eB6133dD607e36": {
-      "shortName": "mkUSD+crvUSD (0x3de2…)",
+    "0xF560DFF6554A00Ab83db8914272AF7c4ADC6764f": {
+      "shortName": "AMPHDUP+3Crv (0x7130…)",
+      "active": false
+    },
+    "0xfb678775EACE73dDA2a5315a64A3CEf9a6471147": {
+      "shortName": "ETH+SPOOL (0x66A0…)",
+      "active": false
+    },
+    "0x11F44b0Dc826945009c059F973528b70C11618D7": {
+      "shortName": "FRAXBP+LCNY (0xEC3C…)",
+      "active": false
+    },
+    "0x5Fb343B70acc6794a497c638DD83E66f5Aa9145E": {
+      "shortName": "APB+ETH (0x8e6A…)",
+      "active": false
+    },
+    "0xEfB7471eB9A858b92438356216dD0c19b1D43300": {
+      "shortName": "ETH+mevETH (0x429c…)",
+      "active": false
+    },
+    "0xC86012a9e5c367eEdEdCB50ed8e7F72C9C69078E": {
+      "shortName": "USDT+WKBO (0xdf7A…)",
+      "active": false
+    },
+    "0x2E3760Aa9F564b5dE99b2f58a21AA2576952Afd8": {
+      "shortName": "USDT+WKBO (0xD232…)",
+      "active": false
+    },
+    "0xb146e9C08CF25C230C084a2Ad597f6413C707B1B": {
+      "shortName": "MMX+USDT (0x1BeD…)",
+      "active": false
+    },
+    "0xa8c8fad10b3F6CCcB7e8A450D4721717313d0A53": {
+      "shortName": "MMX+USDT (0x1e09…)",
+      "active": false
+    },
+    "0xD669dEc3757d0f7ADa3F22043F122DB2fb00ef4E": {
+      "shortName": "hyUSD+iUSD (0x580f…)",
+      "active": false
+    },
+    "0x8C98eA47E4ecE5638f1b8fECaC473Fb31597C627": {
+      "shortName": "ETH+cvxPrisma (0xdD23…)",
+      "active": false
+    },
+    "0xE38a5795e8A61acCa38affa86176372C07084B9A": {
+      "shortName": "cvxPrisma+PRISMA (0xc6cA…)",
+      "active": false
+    },
+    "0x40485f9cF65557b3c04C47201cAC8c3d15399e7D": {
+      "shortName": "UBDN+USDT (0xa476…)",
+      "active": false
+    },
+    "0x02C26E2013D7476E69aD3B453F025A43116B448D": {
+      "shortName": "mkUSD+PRISMA (0x9D81…)",
+      "active": false
+    },
+    "0xb94Fd828FBA827cb98F562916DE1EdA9e930C3D3": {
+      "shortName": "ETH+QOM (0x6853…)",
+      "active": false
+    },
+    "0x731D19D122d6187cD64c44708Dd8665fE8126fa8": {
+      "shortName": "crvUSD+sDAI (0xAcfF…)",
+      "active": false
+    },
+    "0xab8cfA88FAD8B1dd34DC32bB31b5c0cEEA10aFdc": {
+      "shortName": "crvUSD+sFRAX (0x69B6…)",
+      "active": false
+    },
+    "0x5832c01C465E7C51B22ECb4f02D63081DBed2b28": {
+      "shortName": "wUSDA+snxUSD+sUSD (0x9847…)",
+      "active": false
+    },
+    "0xfb3fd2825fE128c3AA7576A2B87Be19880015cAE": {
+      "shortName": "WETH+AMPH+wUSDA (0xdcaf…)",
+      "active": false
+    },
+    "0xfbB82a8df175Ab3Ee94EAe2feC1C43467d6cf222": {
+      "shortName": "WETH+AMPH+wUSDA (0x05CA…)",
+      "active": false
+    },
+    "0x23376482AbC1403e24306d6D09DA10DF7f9c570f": {
+      "shortName": "WETH+wUSDA+AMPH (0x0371…)",
+      "active": false
+    },
+    "0xA6aAE326B8901a610Db0D25E863b2A1b2F10Cd4e": {
+      "shortName": "WETH+wUSDA+AMPH (0x3921…)",
+      "active": false
+    },
+    "0xBb091D9a2EA48F35360420E5BEE935663042BbC3": {
+      "shortName": "WETH+wUSDA+AMPH (0x38AB…)",
+      "active": false
+    },
+    "0x2b7822e663c856153ea1a36AceAd03DD3b7C6561": {
+      "shortName": "oAMPH+vAMPH+AMPH (0x5012…)",
+      "active": false
+    },
+    "0x8C94E9a3B68316fba06bA6666ACDFc2dc7B7F623": {
+      "shortName": "WETH+crvUSD+OSAK (0x6A62…)",
+      "active": false
+    },
+    "0x33dc66f2808d8DF2798E9E02Ce15F8658Ac6d0F8": {
+      "shortName": "frxETH+crvUSD+SDT (0x56aE…)",
+      "active": false
+    },
+    "0x5ccDe4BEC0F4006c3826b51EDF0D227D12EA33FA": {
+      "shortName": "DOLA+DBR+INV (0xC7DE…)",
+      "active": false
+    },
+    "0x331d6F25A382B4961A983d6ddc6974A48E51462c": {
+      "shortName": "ETH++eUSD+RSR (0xDB69…)",
+      "active": false
+    },
+    "0xBE2c62b8aEDb54165FDAe22733Cfb5DBE55d061b": {
+      "shortName": "crvUSD+dETH+BSN (0x35B2…)",
+      "active": false
+    },
+    "0x0e72FE095317522B8D8762e8bEF1D8e5E63F4349": {
+      "shortName": "QOM+O+CAW (0x84Ce…)",
       "active": false
     },
     "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575": {
@@ -519,7 +679,7 @@
     },
     "0xd7d147c6Bb90A718c3De8C0568F9B560C79fa416": {
       "shortName": "pBTC+sbtcCrv (0x7F55…)",
-      "active": true
+      "active": false
     },
     "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855": {
       "shortName": "UST+3Crv (0x890f…)",
@@ -971,7 +1131,7 @@
     },
     "0x762648808EF8B25C6D92270b1C84Ec97dF3bED6B": {
       "shortName": "JPEG+pETH (0x808d…)",
-      "active": true
+      "active": false
     },
     "0xa8Ea11465A1375BF42463C3B613dFC54248b9C7B": {
       "shortName": "XAI+FRAXBP (0x3262…)",
@@ -1405,6 +1565,166 @@
       "shortName": "crvUSD+fETH (0xE7e8…)",
       "active": true
     },
+    "0xD491639539c7434F3a788f6C88e818e5d7a552e9": {
+      "shortName": "ETH+xETH (0x053D…)",
+      "active": true
+    },
+    "0xF184d80915Ba7d835D941BA70cDdf93DE36517ee": {
+      "shortName": "mkUSD+FRAXBP (0x0CFe…)",
+      "active": true
+    },
+    "0x0e5bdb5afe132D1c6A6C67f6D8eB6133dD607e36": {
+      "shortName": "mkUSD+crvUSD (0x3de2…)",
+      "active": true
+    },
+    "0x7671299eA7B4bbE4f3fD305A994e6443b4be680E": {
+      "shortName": "ETH+ETHx (0x59Ab…)",
+      "active": true
+    },
+    "0x66F65323bdE835B109A92045Aa7c655559dbf863": {
+      "shortName": "LUSD+crvUSD (0x9978…)",
+      "active": true
+    },
+    "0x0df268355a2d8c985dCE76EA0B2f8009BB98D757": {
+      "shortName": "ETH+mkUSD (0xc895…)",
+      "active": true
+    },
+    "0xb901a92F2c385AfA0A019e8A307a59A570239ca4": {
+      "shortName": "crvUSD+frxETH+Silo (0x86bF…)",
+      "active": true
+    },
+    "0x5439Dda1cE6A4A5222dB85bB2cAf0AB32c815Be6": {
+      "shortName": "PYUSD+FRAXBP (0x61fA…)",
+      "active": true
+    },
+    "0x138cC21D15b7A06F929Fc6CFC88d2b830796F4f1": {
+      "shortName": "WETH+yETH (0x69AC…)",
+      "active": true
+    },
+    "0x2DD2b7E07dD433B758B98A3889a63cbF48ef0D99": {
+      "shortName": "crvUSD+frxETH+SDT (0x9543…)",
+      "active": true
+    },
+    "0x100Ce95A26E644ee941db8e8e493B99AEB2a9afb": {
+      "shortName": "crvUSD+PYUSD (0x8571…)",
+      "active": true
+    },
+    "0x378e249F4F7007Bd90c2186240374D512B839770": {
+      "shortName": "fETH+FRAXBP (0x5f5F…)",
+      "active": true
+    },
+    "0x8584d7F7bf9803d45e8df75Afe824f1Ae83C6256": {
+      "shortName": "frxETH+OETH (0xfa0B…)",
+      "active": true
+    },
+    "0x20e783242415A589B7E533a46A24FDA240590a18": {
+      "shortName": "USDC+USDC+ (0xF2B2…)",
+      "active": true
+    },
+    "0xA812C37122046ebff408C90Db8065E36F0586A36": {
+      "shortName": "USTP+FRAXBP (0x8e9D…)",
+      "active": true
+    },
+    "0xF42E2b73Ea79812a7c3E4bA8ed052c523765719f": {
+      "shortName": "ETH+FXN (0xC15F…)",
+      "active": true
+    },
+    "0x724476f141ED2DE4DA22eBDF435905dEf1118317": {
+      "shortName": "FXN+cvxFXN (0x1062…)",
+      "active": true
+    },
+    "0x57e1947e1134F6e733A4a694dE6A163eF23EDf54": {
+      "shortName": "pETH+frxETH (0x320B…)",
+      "active": true
+    },
+    "0xaB79226E4fbd6d299316C0964Be9F417c8f920C9": {
+      "shortName": "crvUSD+WETH+LDO (0x5b3B…)",
+      "active": true
+    },
+    "0xA6762d10D6471F778C9c6Ce21A38245e9387915e": {
+      "shortName": "FXN+sdFXN (0x28Ca…)",
+      "active": true
+    },
+    "0xeA012f5b25Fa0D8e46123B85f585d0A5075e96b5": {
+      "shortName": "wstETH+rETH+sfrxETH (0x2570…)",
+      "active": true
+    },
+    "0x188a85362CC5e245A377294aa270C7758A203918": {
+      "shortName": "crvUSD+stUSDT (0xB9eC…)",
+      "active": true
+    },
+    "0xd32F4bE8f777Ac27c6AAd544457de6d4f17a1BFA": {
+      "shortName": "crvUSD+STBT (0x707E…)",
+      "active": true
+    },
+    "0x511819E6Ab018106087A1a0f398244a38CEc5B62": {
+      "shortName": "crvUSD+sDAI (0x5DAC…)",
+      "active": false
+    },
+    "0x8014083AD9A7e8e78bd2f5f2A5419E0a28d94369": {
+      "shortName": "JPEG+frxETH (0xFF18…)",
+      "active": true
+    },
+    "0xAb1BB9811B99D04E356FCb7D3af106Ae4EE2F06d": {
+      "shortName": "dYFI+ETH (0x8aC6…)",
+      "active": true
+    },
+    "0x4B43fEaB8f5ccD38Ac0831DD7eC797330114F058": {
+      "shortName": "FRAX+tBTC+frxETH (0x4D19…)",
+      "active": true
+    },
+    "0xdF901BE65847AaCED69319394835E7Dce5740556": {
+      "shortName": "crvUSD+USDM (0x2dab…)",
+      "active": true
+    },
+    "0x62B8DA8f1546a092500c457452fC2d45fa1777c4": {
+      "shortName": "crvUSD+sFRAX (0xfEF7…)",
+      "active": true
+    },
+    "0x2B5a5e182768a18C70EDd265240578a72Ca475ae": {
+      "shortName": "crvUSD+sDAI (0x1539…)",
+      "active": true
+    },
+    "0x9A3dCece0968b8a94AfF643C9c72127a2C1D80dc": {
+      "shortName": "ETH+PRISMA (0x3221…)",
+      "active": true
+    },
+    "0x33C762Ba96B6b0b5b0CF1F34505EcEF76b1735E9": {
+      "shortName": "sDAI+USDM (0x36Df…)",
+      "active": true
+    },
+    "0xc1394d6c89cf8F553da8c8256674C778ccFf3E80": {
+      "shortName": "wstETH+ETHx (0x1475…)",
+      "active": true
+    },
+    "0x42427Bb483f20b2722300Bc4E60DE2EFB00A869a": {
+      "shortName": "thUSD+crvUSD (0xDd9E…)",
+      "active": true
+    },
+    "0x528bED8b1E95549694519dbF8cFBdD54e274Cd48": {
+      "shortName": "thUSD+3Crv (0x212a…)",
+      "active": true
+    },
+    "0x9CeD5fC96F6f28530BBBbBf34c3634De50b682b7": {
+      "shortName": "frxETH+mevETH (0xF1B0…)",
+      "active": true
+    },
+    "0x13E58C7b1147385D735a06D14F0456E54C2dEBC8": {
+      "shortName": "PRISMA+cvxPrisma (0x3b21…)",
+      "active": true
+    },
+    "0x7845031a8327885c5f14e0473dbbd5aD38C8c8BC": {
+      "shortName": "frxETH+IQ (0xa795…)",
+      "active": true
+    },
+    "0x5136d95CaaBDB1A7eBa2A8D168a4BCF8fc54a2E2": {
+      "shortName": "crvUSD+USDV (0xA367…)",
+      "active": true
+    },
+    "0x84Ef03eaA31eC36b1C6e6fC4ED355da25183348b": {
+      "shortName": "USDV+3Crv (0x76Ae…)",
+      "active": true
+    },
     "0x82d0aDea8C4CF2fc84A499b568F4C1194d63113d": {
       "shortName": "AAVE+palStkAAVE (0x4853…)",
       "active": false
@@ -1489,6 +1809,10 @@
       "shortName": "ftm-USDC+USDT+DAI (0xe898…)",
       "active": false
     },
+    "0x6680f8CDE0a17d293cf59b12129aeAce4845EdD1": {
+      "shortName": "ftm-cUSD+DAI+USDC (0x9605…)",
+      "active": false
+    },
     "0x78DA40dbFA5c3CC65319e8d658d3c9BaD3322f26": {
       "shortName": "poly-FRAX+am3CRV (0x5e5A…)",
       "active": false
@@ -1567,11 +1891,11 @@
     },
     "0x681EE77c66C43b80298c6Cc5a1611e69293daB81": {
       "shortName": "poly-aCRV+CRV (0xd9F3…)",
-      "active": true
+      "active": false
     },
     "0x875CE7e0565b4C8852CA2a9608F27B7213A90786": {
       "shortName": "poly-USDR+am3CRV (0xa138…)",
-      "active": true
+      "active": false
     },
     "0x2Fa834922f022462F4028749aA93Ebf6357CF070": {
       "shortName": "poly-FRAX+USDC (0xB6aC…)",
@@ -1579,6 +1903,42 @@
     },
     "0xFC052e70eB6D94AFE464A8CE8f43d203109494F2": {
       "shortName": "poly-miMATIC+FRAX (0xA691…)",
+      "active": false
+    },
+    "0xf8b31183E3DB3b109F37DB573121fDA13c216DD6": {
+      "shortName": "poly-CRV+asdCRV (0x5D8c…)",
+      "active": true
+    },
+    "0xBBae48262785dE69343bF99714C7a31CCe0167E9": {
+      "shortName": "poly-asdCRV+CRV (0x0397…)",
+      "active": false
+    },
+    "0xE12436cd9ba0FB8c5a549d76051f60eCABAC5155": {
+      "shortName": "poly-CRV+PROS (0x2a3f…)",
+      "active": false
+    },
+    "0xbb3FAD83166F751F06c92AA83ECD93d61283A0D1": {
+      "shortName": "poly-PYD+am3CRV (0x9a30…)",
+      "active": false
+    },
+    "0x326D91715561D8E94f1E71fb691a17A38F10417C": {
+      "shortName": "poly-MATIC+DST (0x9Ddb…)",
+      "active": false
+    },
+    "0xFb6ac3f0448b254F71321d411b6f56105A6CA53a": {
+      "shortName": "poly-MATIC+ACO (0x2bdb…)",
+      "active": false
+    },
+    "0x3c602e13C7D24Ac655aD575503444eDf300Ae749": {
+      "shortName": "poly-MATIC+ACO (0xcA80…)",
+      "active": false
+    },
+    "0xf9A9769109B47211c7acF799b37CE7e75534DCaa": {
+      "shortName": "poly-WBTC+DAI (0x321b…)",
+      "active": false
+    },
+    "0x1E02cc139d36d87EA585B27730062bf8943792AE": {
+      "shortName": "poly-DEFOOD+USDC (0xD9Fb…)",
       "active": false
     },
     "0xF2dDF89C04d702369Ab9eF8399Edb99a76e951Ce": {
@@ -1653,8 +2013,28 @@
       "shortName": "arbi-USD++FRAXBP-f (0xb34a…)",
       "active": true
     },
+    "0x5839337bf070Fea56595A5027e83Cd7126b23884": {
+      "shortName": "arbi-fETH+xETH+WETH (0xF7Fe…)",
+      "active": true
+    },
+    "0x46FEc59Eb30C2D610917ebf4CE5114f7425b2c4A": {
+      "shortName": "arbi-WETH+frxETH (0x1DeB…)",
+      "active": false
+    },
     "0x0638CC138b5C7169A9F1c55908A902174Ca8b04C": {
       "shortName": "arbi-axlUSDC+USDC.e (0x15a1…)",
+      "active": false
+    },
+    "0x97adC8Ee21C62c53B8043E21392906402587622F": {
+      "shortName": "arbi-USDC.e+WETH+USDT (0x06d3…)",
+      "active": false
+    },
+    "0xa16B018b4b6Cd26004bAa475a88C195df3C9BA3b": {
+      "shortName": "arbi-USDT+WBTC+WETH (0x0c8F…)",
+      "active": false
+    },
+    "0xc8349Bd2aD00f811f04Af15AcE33d18Ba828888f": {
+      "shortName": "arbi-USDC+DAI (0xe9E9…)",
       "active": false
     },
     "0x7387D796322d104909Cc4aa7884e1Ea72748B4ff": {
@@ -1821,6 +2201,10 @@
       "shortName": "xdai-x3CRV+WBTC+WETH (0x5633…)",
       "active": false
     },
+    "0x255e803ebbd1F48afCf98F55257c8c84cc70fE64": {
+      "shortName": "xdai-EURe+USDT (0x1e5a…)",
+      "active": false
+    },
     "0xe74D531b0c7db81E84643D106522C783d61C9675": {
       "shortName": "moon-xcDOT+stDOT (0x0fFc…)",
       "active": false
@@ -1867,7 +2251,7 @@
     },
     "0x6616CCfA456F72104452341fa470E9B08A11b1aB": {
       "shortName": "base-USDbC+axlUSDC+crvUSD (0xA450…)",
-      "active": false
+      "active": true
     },
     "0x3E091A0277403446e57F25A979A46270d02488C9": {
       "shortName": "base-WETH+cbETH (0x8E01…)",
@@ -1879,19 +2263,59 @@
     },
     "0xE9c898BA654deC2bA440392028D2e7A194E6dc3e": {
       "shortName": "base-WETH+cbETH (0x11C1…)",
-      "active": false
+      "active": true
     },
     "0x93933FA992927284e9d508339153B31eb871e1f4": {
       "shortName": "base-crvUSD+tBTC+WETH (0x6e53…)",
-      "active": false
+      "active": true
     },
     "0x89289DC2192914a9F0674f1E9A17C56456549b8A": {
       "shortName": "base-CRV+crvUSD (0xDE37…)",
+      "active": true
+    },
+    "0x79edc58C471Acf2244B8f93d6f425fD06A439407": {
+      "shortName": "base-USDC+USDbC+axlUSDC+crvUSD (0xf6C5…)",
+      "active": true
+    },
+    "0xc0798d022eEE81F1408895325A9fBe171d2a24f1": {
+      "shortName": "base-USD++crvUSD (0xda3d…)",
+      "active": true
+    },
+    "0xa5771C3D05D56dc146DCAdbd89e6D5Cbc234cD76": {
+      "shortName": "base-BOOST+crvUSD (0xc973…)",
       "active": false
+    },
+    "0xb2135e9B790C50Fa018ca14e4B04BDb4ADd2a61B": {
+      "shortName": "base-eUSD+crvUSD (0x798D…)",
+      "active": true
+    },
+    "0x1DDe7a4500B174D35C6C3C20EA9d53F573B54116": {
+      "shortName": "base-Vaya+crvUSD (0xC232…)",
+      "active": false
+    },
+    "0x9AF0723085f8D96699335B2E536c1dbaeF1e049f": {
+      "shortName": "base-crvUSD+Vaya (0xCf92…)",
+      "active": false
+    },
+    "0x2DFeE5874aC76C72a1F2D39Cc91A1bbe1F59BDc4": {
+      "shortName": "base-hyUSD+eUSD (0x6Be2…)",
+      "active": true
     },
     "0xeF1Ee80374E0cBE081e9121Fe43A10497B0D321C": {
       "shortName": "base-CRV+USDbC (0x3FCa…)",
       "active": false
+    },
+    "0x77d41fcF9917192237952419017249e9Af9DcaDa": {
+      "shortName": "base-PYUSD+crvUSD (0x98f6…)",
+      "active": false
+    },
+    "0x9432593e9bA7B6aed2af251dc65993CF58475ddE": {
+      "shortName": "base-USDbC+DAI (0x467F…)",
+      "active": false
+    },
+    "0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60": {
+      "shortName": "VeFunder-vyper",
+      "active": true
     }
   }
 }

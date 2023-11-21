@@ -1,0 +1,74 @@
+{
+  "55": {
+    "mainnet": {
+      "0x96424E6b5eaafe0c3B36CA82068d574D44BE4e3c": [
+        {
+          "index": "1",
+          "pool": "FRAX+crvUSD (0x0CD6…)",
+          "token": "0xD533a949740bb3306d119CC777fa900bA034cd52",
+          "decimals": 18,
+          "amount": "96000000000000000000000",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "96000000000000000000000",
+          "recycled": "0",
+          "depositor": "0x7a16fF8270133F063aAb6C9977183D9e72835428"
+        }
+      ]
+    }
+  },
+  "56": {
+    "mainnet": {
+      "0x96424E6b5eaafe0c3B36CA82068d574D44BE4e3c": [
+        {
+          "index": "0",
+          "pool": "FRAX+crvUSD (0x0CD6…)",
+          "token": "0xD533a949740bb3306d119CC777fa900bA034cd52",
+          "decimals": 18,
+          "amount": "96000000000000000000000",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "96000000000000000000000",
+          "recycled": "0",
+          "depositor": "0x7a16fF8270133F063aAb6C9977183D9e72835428"
+        }
+      ]
+    }
+  },
+  "57": {
+    "mainnet": {
+      "0x96424E6b5eaafe0c3B36CA82068d574D44BE4e3c": [
+        {
+          "index": "1",
+          "pool": "FRAX+crvUSD (0x0CD6…)",
+          "token": "0xD533a949740bb3306d119CC777fa900bA034cd52",
+          "decimals": 18,
+          "amount": "96000000000000000000000",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "96000000000000000000000",
+          "recycled": "0",
+          "depositor": "0x7a16fF8270133F063aAb6C9977183D9e72835428"
+        }
+      ]
+    }
+  },
+  "58": {
+    "mainnet": {
+      "0x96424E6b5eaafe0c3B36CA82068d574D44BE4e3c": [
+        {
+          "index": "0",
+          "pool": "FRAX+crvUSD (0x0CD6…)",
+          "token": "0xD533a949740bb3306d119CC777fa900bA034cd52",
+          "decimals": 18,
+          "amount": "96000000000000000000000",
+          "maxPerVote": "0",
+          "excluded": [],
+          "distributed": "0",
+          "recycled": "0",
+          "depositor": "0x7a16fF8270133F063aAb6C9977183D9e72835428"
+        }
+      ]
+    }
+  }
+}
