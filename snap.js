@@ -67,6 +67,25 @@ async function getVoters(hashId) {
     var response = await request(snapshot_endpoint, votersQuery);
 //console.log(response);
 //console.log('Number of votes: ' + response.votes.length);
+
+    // in Nov 9th week, Convex deployer forgot to vote. This assigns their vote to veFunder just as a placeholder, 
+    // to get a list of non-voting delegates for convex team to reimburse
+    
+    if(hashId == '0x19683e854234ed9bd75665c22e06b880f91e918b0a21aace406c09d1fcaa9c3c') {
+        convexVote = {
+            id: '0x0000009385d66f5d08459d00503b795599964dfb50b24d7e3784a85d7476bad0',
+            voter: '0x947B7742C403f20e5FaCcDAc5E092C943E7D0277',
+            created: 1699920047,
+            proposal: {
+              id: '0x19683e854234ed9bd75665c22e06b880f91e918b0a21aace406c09d1fcaa9c3c'
+            },
+            choice: {
+              '272': 1
+            },
+            space: { id: 'cvx.eth' }
+        };
+        response.votes.push(convexVote);
+    }
     return response.votes;
 }
 async function getVoteAllScores(block, voteAddresses, strategy) {
@@ -284,12 +303,22 @@ async function tally(toGrab, choices) {
 module.exports = {
     endpoint: snapshot_endpoint,
     // update snapshot local storage for a specified round, with specified delay between updates
-    updateSnapshot: async (delay, _round) => {
-        curveGauges = await storage.read("gauges");
+    updateSnapshot: async (delay, _round, platform=0) => {
+        if(platform == 0) {
+            gauges = await storage.read("gauges");
+            pStr = "Gauge Weight for Week";
+            var roundstart = 1348 * 86400 * 14 + _round * 86400 * 14;
+            store = "snapshotVoteData";
+        } else if(platform==1) {
+            gauges = await storage.read("prismaGauges");
+            pStr = "Prisma Emissions Weight for Week";
+            var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
+            store = "prismaSnapshotVoteData";
+        }
         gaugesReverse = {};
-        for (g in curveGauges.gauges) {
-            if(curveGauges.gauges[g].shortName == undefined) { continue; }
-            gaugesReverse[curveGauges.gauges[g].shortName] = g;
+        for (g in gauges.gauges) {
+            if(gauges.gauges[g].shortName == undefined) { continue; }
+            gaugesReverse[gauges.gauges[g].shortName] = g;
         }
 
         var shot = await storage.read("snapshotVoteData", _round);
@@ -309,19 +338,16 @@ module.exports = {
                 }
 
                 for (i = 0; i < proposals.length; i++) {
-                    if (proposals[i].title.indexOf("Gauge Weight for Week") !== -1) {
+                    if (proposals[i].title.indexOf(pStr) !== -1) {
                         // check if proposal was created after, but within 24 hours after round start
-                        var roundstart = 1348 * 86400 * 14 + _round * 86400 * 14;
                         if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400) {
                             shot.id = proposals[i].id; // matched snapshot id
                             for(g in proposals[i].choices) {
                                 // create gauge list from choice names
                                 if(gaugesReverse[proposals[i].choices[g]] != undefined) {
                                     proposals[i].choices[g] = gaugesReverse[proposals[i].choices[g]];
-                                } else if(proposals[i].choices[g] == "VeFunder-vyper") {
-                                    proposals[i].choices[g] = "0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60";
                                 } else {
-                                    console.log("Could not match gauge "+proposals[i].choices[g]+" to gauge address");
+                                    console.log("Could not match gauge "+proposals[i].choices[g]+" to gauge address or receiver index");
                                 }
                             }
                             shot.choices = proposals[i].choices; // store in round snapshot data
@@ -333,14 +359,14 @@ module.exports = {
             // if we failed to match, store lastUpdated and return empty shot object
             if (shot.id == undefined) { 
                 shot.lastUpdated = Math.floor(Date.now() / 1000);
-                await storage.write("snapshotVoteData", shot, _round);
+                await storage.write(store, shot, _round);
                 return shot;
             }
             // if we have an id and delay has passed, update snapshot
 
             shot.votes = await tally(shot.id, shot.choices);
             shot.lastUpdated = Math.floor(Date.now() / 1000);
-            await storage.write("snapshotVoteData", shot, _round);
+            await storage.write(store, shot, _round);
         }
         return shot;
     }

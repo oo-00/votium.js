@@ -1,6 +1,14 @@
 {
-    "mainnet": "0x63942E31E98f1833A234077f47880A66136a2D1e",
-    "zkevm": "",
-    "optimism": "",
-    "arbitrum": ""
+    "vlcvxCurveFrax": {
+        "mainnet": "0x63942E31E98f1833A234077f47880A66136a2D1e",
+        "zkevm": "",
+        "optimism": "",
+        "arbitrum": ""
+    },
+    "vlcvxPrisma": {
+        "mainnet": "0xff67dac47e2ad39e8eb51988ae3e82381982a91a",
+        "zkevm": "",
+        "optimism": "",
+        "arbitrum": ""
+    }
 }
