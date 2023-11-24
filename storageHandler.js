@@ -32,13 +32,15 @@ switch(config.storageTypes[config.storageType]) {
     case "firebase":
         const functions = require("firebase-functions");
         const admin = require("firebase-admin");
-        if(config.firebaseLocal) {
-            admin.initializeApp({
-                credential: admin.credential.cert(config.firebaseCert),
-                databaseURL: config.firebaseUrl
-            });
-        } else {
-            admin.initializeApp();
+        if(!config.firebaseInherit) {
+            if(config.firebaseLocal) {
+                admin.initializeApp({
+                    credential: admin.credential.cert(config.firebaseCert),
+                    databaseURL: config.firebaseUrl
+                });
+            } else {
+                admin.initializeApp();
+            }
         }
         const db = admin.database();
         _read = async (key, suffix = "") => {

@@ -53,9 +53,9 @@ Gauges[0] = storage.read("gauges"); // curve gauges
 Gauges[1] = storage.read("prismaGauges"); // prisma receivers
 var vlCVXAddresses = storage.read("vlCVXAddresses"); // vlCVX address list
 
-function roundEpoch(_round) { return (_round+1348) * 86400 * 14; }
+function roundEpoch(_round, p) { return (_round+1348+(p*57)) * 86400 * 14; }
 for(i in round) {
-    if(Math.floor(Date.now()/1000)-roundEpoch(round[i]) > 60*60*24*5) round[i]++; // if vote is over, default to next round
+    if(Math.floor(Date.now()/1000)-roundEpoch(round[i], i) > 60*60*24*5) round[i]++; // if vote is over, default to next round
 }
 
 // Initialize providers and votium deposit contracts (single and multicall)
@@ -351,6 +351,9 @@ async function _getGauges(platform=0) {
                 "shortName": GaugesRaw[i].shortName,
                 "active": (GaugesRaw[i].hasNoCrv == false && GaugesRaw[i].is_killed == false),
             }
+            if(Gauges[platform].gauges[ethers.utils.getAddress(GaugesRaw[i].gauge)].active == false) {
+                delete Gauges[platform].gauges[ethers.utils.getAddress(GaugesRaw[i].gauge)];
+            }
         }
         if(Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] == undefined) {
             Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] = {
@@ -371,7 +374,8 @@ async function _getGauges(platform=0) {
             }
         }
         for(i in gauge) {
-            gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "");
+            gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "").replace("cvxPRISMA/PRISMA", "cvxPrisma/Prisma");
+            if(gauge[i].shortName == "Curve.fi : PRISMA/ETH") gauge[i].shortName = "Prisma PRISMA/ETH Curve";
         }
         Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
         pointer = "prismaGauges";
