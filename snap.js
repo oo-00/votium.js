@@ -321,7 +321,7 @@ module.exports = {
             gaugesReverse[gauges.gauges[g].shortName] = g;
         }
 
-        var shot = await storage.read("snapshotVoteData", _round);
+        var shot = await storage.read(store, _round);
         if(shot == null) { shot = {lastUpdated:0}; }
 
         // if lastUpdated is sooner than delay, or round has not started, return cached snapshot

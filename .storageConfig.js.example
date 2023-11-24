@@ -47,6 +47,8 @@ module.exports = {
 
         // Firebase URL
         firebaseUrl: "https://[YOUR DB HERE].firebaseio.com/",
+        // Inherit auth from parent
+        firebaseInherit: false,
         // Authenticate locally with Cert or as an uploaded service account
         firebaseLocal: true,
         // Firebase credentials, only used if firebaseLocal is true
