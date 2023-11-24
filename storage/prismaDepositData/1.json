@@ -12,6 +12,46 @@
         "excluded": [],
         "depositor": "0xdC7C7F0bEA8444c12ec98Ec626ff071c6fA27a19",
         "poolActive": true
+      },
+      {
+        "index": 1,
+        "pool": "Prisma PRISMA/ETH Convex",
+        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
+        "decimals": 6,
+        "amount": "4800000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0xb335312edfc1628ec20973Ed04c19DBEEF909966",
+        "poolActive": true
+      }
+    ],
+    "17": [
+      {
+        "index": 0,
+        "pool": "Prisma cvxPrisma/Prisma Convex",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "957120000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "19": [
+      {
+        "index": 0,
+        "pool": "Prisma mkPRISMA-f Convex",
+        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
+        "decimals": 6,
+        "amount": "9600000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0xb335312edfc1628ec20973Ed04c19DBEEF909966",
+        "poolActive": true
       }
     ]
   }

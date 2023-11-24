@@ -27,6 +27,160 @@
         "depositor": "0x7a16fF8270133F063aAb6C9977183D9e72835428",
         "poolActive": true
       }
+    ],
+    "0xd8b712d29381748dB89c36BCa0138d7c75866ddF": [
+      {
+        "index": 0,
+        "pool": "MIM+3Crv (0x5a6A…)",
+        "token": "0x090185f2135308BaD17527004364eBcC2D37e5F6",
+        "symbol": "SPELL",
+        "decimals": 18,
+        "amount": "121440000000000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x5EeDA5BDF0A647a7089329428009eCc9CB9451cc",
+        "poolActive": true
+      }
+    ],
+    "0x7E1444BA99dcdFfE8fBdb42C02F0005D14f13BE1": [
+      {
+        "index": 0,
+        "pool": "WETH+CVX (0xB576…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "19007040000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0xaa386EF96A910Ee2F9cbEf7B139e99A88DF3b2ba": [
+      {
+        "index": 0,
+        "pool": "CVX+FRAXBP (0xBEc5…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "1009920000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0xc2075702490F0426E84E00d8B328119027813AC5": [
+      {
+        "index": 0,
+        "pool": "frxETH+CVX (0x47D5…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "5207040000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0xfB18127c1471131468a1AaD4785c19678e521D86": [
+      {
+        "index": 0,
+        "pool": "CRV+cvxCRV (0x971a…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "82590720000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0xa47d0837F84Fb2d1aA08077D10d10101316a959d": [
+      {
+        "index": 0,
+        "pool": "cvxCRV+FRAXBP (0x31c3…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "834240000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0x0c58c509305a8a7fE9a6a60CEaAC6185B96ECBb7": [
+      {
+        "index": 0,
+        "pool": "FXS+cvxFXS (0x6a90…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "23056320000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0xc7A770dE69479bEEEEf22b2C9851760BaC3630Da": [
+      {
+        "index": 0,
+        "pool": "cvxFXS+FRAXBP (0x21d1…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "470400000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0x66915f81deaFcFbA171aEaa914c76A607437Dd4a": [
+      {
+        "index": 0,
+        "pool": "FPIS+cvxFPIS (0xfBB4…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "1163520000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0x724476f141ED2DE4DA22eBDF435905dEf1118317": [
+      {
+        "index": 0,
+        "pool": "FXN+cvxFXN (0x1062…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "1832640000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
+    ],
+    "0x13E58C7b1147385D735a06D14F0456E54C2dEBC8": [
+      {
+        "index": 0,
+        "pool": "PRISMA+cvxPrisma (0x3b21…)",
+        "token": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        "symbol": "CVX",
+        "decimals": 18,
+        "amount": "957120000000000000000",
+        "maxPerVote": "0",
+        "excluded": [],
+        "depositor": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+        "poolActive": true
+      }
     ]
   }
 }
