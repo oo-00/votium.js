@@ -62,12 +62,24 @@
     },
     "15": {
       "active": true,
-      "shortName": "Curve.fi : PRISMA/ETH"
+      "shortName": "Prisma PRISMA/ETH Curve"
     },
     "16": {
       "active": true,
       "shortName": "Prisma PRISMA/ETH Convex"
+    },
+    "17": {
+      "active": true,
+      "shortName": "Prisma cvxPrisma/Prisma Convex"
+    },
+    "18": {
+      "active": true,
+      "shortName": "Prisma mkPRISMA-f Curve"
+    },
+    "19": {
+      "active": true,
+      "shortName": "Prisma mkPRISMA-f Convex"
     }
   },
-  "lastUpdated": 1700515043
+  "lastUpdated": 1700866803
 }
