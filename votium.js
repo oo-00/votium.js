@@ -830,9 +830,11 @@ module.exports = {
         return Gauges[platform];
     },
     // update snapshot for a given round, using an optional delay from last call
-    updateSnapshot: async function (_round = 0, delay = 0, platform=0) {
+    // can pass your own voter address to be excluded, to assist in
+    // calculating a new vote for that address (while snapshot is active)
+    updateSnapshot: async function (_round = 0, delay = 0, platform=0, voter=null) {
         if(_round == 0) _round = this.round(platform);
-        var shot = await snap.updateSnapshot(delay, _round, platform);
+        var shot = await snap.updateSnapshot(delay, _round, platform, voter);
         return shot;
     },
     // get l2 votes for a given round, in the same format as snapshot function
