@@ -122,7 +122,7 @@ async function getVoteAllScores(block, voteAddresses, strategy) {
     }
 }
 
-async function getVoteScores(block, voteAddresses, strategy) {
+async function getVoteScores(block, voteAddresses, strategy, voter=null) {
     const params = {
     space: "cvx.eth",
     network: "1",
@@ -152,16 +152,24 @@ async function getVoteScores(block, voteAddresses, strategy) {
     var totalScore = 0;
 
     for (var x in voteAddresses) {
-    if (obj.result.scores[0][voteAddresses[x]] != undefined) {
-        totalScore = totalScore + obj.result.scores[0][voteAddresses[x]];
-    }
-    if (totalAddresses[voteAddresses[x]] == undefined && obj.result.scores[0][voteAddresses[x]] != undefined) {
-        totalAddresses[voteAddresses[x]] = obj.result.scores[0][voteAddresses[x]]
-    } else {
-        if (obj.result.scores[0][voteAddresses[x]] != undefined) {
-        totalAddresses[voteAddresses[x]] = totalAddresses[voteAddresses[x]] + obj.result.scores[0][voteAddresses[x]];
+        if(voteAddresses[x] == voter) {
+            totalAddresses[voteAddresses[x]] = 0;
+            if(obj.result.scores[0][voteAddresses[x]] != undefined) {
+              totalAddresses[voteAddresses[x]] += obj.result.scores[0][voteAddresses[x]];
+            }
+            if(obj.result.scores[1][voteAddresses[x]] != undefined) {
+              totalAddresses[voteAddresses[x]] += obj.result.scores[1][voteAddresses[x]];
+            }
+            continue;
         }
-    }
+        if (obj.result.scores[0][voteAddresses[x]] != undefined) {
+            totalScore = totalScore + obj.result.scores[0][voteAddresses[x]];
+        }
+        if (totalAddresses[voteAddresses[x]] == undefined && obj.result.scores[0][voteAddresses[x]] != undefined) {
+            totalAddresses[voteAddresses[x]] = obj.result.scores[0][voteAddresses[x]]
+        } else if (obj.result.scores[0][voteAddresses[x]] != undefined) {
+            totalAddresses[voteAddresses[x]] = totalAddresses[voteAddresses[x]] + obj.result.scores[0][voteAddresses[x]];
+        }
     }
 //console.log('Total Score: ' + totalScore);
     return totalAddresses;
@@ -221,26 +229,33 @@ async function getProposals(query) {
     }
 }
 
-async function tally(toGrab, choices) {
+var voterPlaceholder = 0;
+
+async function tally(toGrab, choices, voter=null) {
     var proposal = await grabProposal(toGrab);
     var snapshot_block = proposal.snapshot;
     var voters = await getVoters(toGrab);
     var votersCheck = [];
-    testVoted = [];
-    for (var y in voters) {
-        testVoted = voters[y].voter;
-    }
     for (var i in voters) {
         votersCheck.push(voters[i].voter);
+    }
+    if (voter != null) {
+        votersCheck.push(voter);
     }
     var voterAllScores = await getVoteAllScores(snapshot_block, votersCheck, proposal.strategies);
     if (voterAllScores == null) {
         return {};
     }
+    if(voter != null) {
+        if(voterAllScores[1][voter] > 0) {
+            voterPlaceholder = voterAllScores[1][voter];
+        }
+    }
     var delegationTotalComp = {};
     for (var i in voters) {
         if (voterAllScores[1][voters[i].voter] > 0) {
             //console.log("loading delegates from "+voters[i].voter);
+            if(voters[i].voter == voter) { console.log("skipping "+voter+" delegations"); continue; }
             p = 0;
             del = await getDelegates(voters[i].voter, snapshot_block, 0);
             delegates = [];
@@ -273,12 +288,16 @@ async function tally(toGrab, choices) {
         }
     }
     //console.log(JSON.stringify(proposal.strategies));
-    var voterScores = await getVoteScores(snapshot_block, votersCheck, proposal.strategies);
+    var voterScores = await getVoteScores(snapshot_block, votersCheck, proposal.strategies, voter);
 
     //console.log("-------");
     ptot = 0;
     poolShot = {total:0,gauges:{}};
     for (i = 0; i < voters.length; i++) {
+        if(voters[i].voter == voter) {
+            console.log("skipping "+voter+" weights")
+            continue;
+        }
         userPower = voterScores[voters[i].voter];
         if (userPower > 0) {
             ptot += userPower;
@@ -303,7 +322,7 @@ async function tally(toGrab, choices) {
 module.exports = {
     endpoint: snapshot_endpoint,
     // update snapshot local storage for a specified round, with specified delay between updates
-    updateSnapshot: async (delay, _round, platform=0) => {
+    updateSnapshot: async (delay, _round, platform=0, voter=null) => {
         if(platform == 0) {
             gauges = await storage.read("gauges");
             pStr = "Gauge Weight for Week";
@@ -359,14 +378,17 @@ module.exports = {
             // if we failed to match, store lastUpdated and return empty shot object
             if (shot.id == undefined) { 
                 shot.lastUpdated = Math.floor(Date.now() / 1000);
-                await storage.write(store, shot, _round);
+                if(voter == null) { await storage.write(store, shot, _round); }
                 return shot;
             }
             // if we have an id and delay has passed, update snapshot
 
-            shot.votes = await tally(shot.id, shot.choices);
+            shot.votes = await tally(shot.id, shot.choices, voter);
             shot.lastUpdated = Math.floor(Date.now() / 1000);
-            await storage.write(store, shot, _round);
+            if(voter == null) { await storage.write(store, shot, _round); }
+        }
+        if(voter != null) {
+            shot.voter = voterPlaceholder;
         }
         return shot;
     }
