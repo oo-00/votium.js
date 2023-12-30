@@ -969,6 +969,49 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_round",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_gauge",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_maxPerVote",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address[]",
+                "name": "_excluded",
+                "type": "address[]"
+            },
+            {
+                "internalType": "address",
+                "name": "_depositor",
+                "type": "address"
+            }
+        ],
+        "name": "manualIncentive",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "maxExclusions",
         "outputs": [
