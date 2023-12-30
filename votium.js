@@ -374,7 +374,7 @@ async function _getGauges(platform=0) {
             }
         }
         for(i in gauge) {
-            gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "").replace("cvxPRISMA/PRISMA", "cvxPrisma/Prisma");
+            gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "");
             if(gauge[i].shortName == "Curve.fi : PRISMA/ETH") gauge[i].shortName = "Prisma PRISMA/ETH Curve";
         }
         Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
