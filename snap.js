@@ -333,6 +333,11 @@ module.exports = {
             pStr = "Prisma Emissions Weight for Week";
             var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
             store = "prismaSnapshotVoteData";
+        } else if(platform==2) {
+            gauges = await storage.read("fxGauges");
+            pStr = "FXN Emissions Weight for Week";
+            var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
+            store = "fxSnapshotVoteData";
         }
         gaugesReverse = {};
         for (g in gauges.gauges) {

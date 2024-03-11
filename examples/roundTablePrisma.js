@@ -13,7 +13,7 @@ const tleft = "├"; const tright = "┤"; const cross = "┼";
 
 
 async function roundTable() {
-    var roundObject = await votium.roundObject(1,1);
+    var roundObject = await votium.roundObject(0,1);
     buildDisplay(roundObject);
     if(votium.storageType == "firebase") {
         process.exit(); // exit if using firebase, as it will hang

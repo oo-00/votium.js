@@ -5,6 +5,7 @@ const config = require('./.config.json');
 const deployments = require('./deployments.json');
 const depositAbi = require('./abis/votium.json');
 const depositVlcvxPrismaAbi = require('./abis/votiumVlCVXPrisma.json');
+const depositVlcvxFXNAbi = require('./abis/votiumVlCVXFXN.json');
 const erc20Abi = require('./abis/erc20.json');
 const l2Abi = require('./abis/l2platform.json');
 const lockerAbi = require('./abis/locker.json');
@@ -33,13 +34,13 @@ var dater; // eth-dater instance, not initialized until mainnet provider is init
 
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
 
-const GaugeEndpoint = ["https://api.curve.fi/api/getAllGauges", "https://api.prismafinance.com/api/v1/emissionVotes"];
+const GaugeEndpoint = ["https://api.curve.fi/api/getAllGauges", "https://api.prismafinance.com/api/v1/emissionVotes", "https://api.aladdin.club/api1/get_fx_gauge_list"];
 
 var calls = {};
 var providers = {};
 var mProviders = {};
-var contracts = [{},{}];
-var mContracts = [{},{}];
+var contracts = [{},{},{}];
+var mContracts = [{},{},{}];
 var l2platform;
 var ml2platform;
 var vlCVXLocker;
@@ -48,9 +49,12 @@ var querySize = 1000;
 var round = [];
 round[0] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
 round[1] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1405;
+round[2] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1412;
 var Gauges = [];
 Gauges[0] = storage.read("gauges"); // curve gauges
 Gauges[1] = storage.read("prismaGauges"); // prisma receivers
+Gauges[2] = storage.read("fxGauges"); // fxn gauges
+
 var vlCVXAddresses = storage.read("vlCVXAddresses"); // vlCVX address list
 
 function roundEpoch(_round, p) { return (_round+1348+(p*57)) * 86400 * 14; }
@@ -84,6 +88,11 @@ for (i in config.providers) {
         if(deployments.vlcvxPrisma[i] != "") {
             contracts[1][i]  = new ethers.Contract(deployments.vlcvxPrisma[i], depositVlcvxPrismaAbi, providers[i]);
             mContracts[1][i]  = new Contract(deployments.vlcvxPrisma[i], depositVlcvxPrismaAbi);
+        }
+        
+        if(deployments.vlcvxFXN[i] != "") {
+            contracts[2][i]  = new ethers.Contract(deployments.vlcvxFXN[i], depositVlcvxFXNAbi, providers[i]);
+            mContracts[2][i]  = new Contract(deployments.vlcvxFXN[i], depositVlcvxFXNAbi);
         }
     } catch (e) {
         console.log("Error: " + e);
@@ -144,7 +153,7 @@ async function _getIncentives(network, _round, platform=0) {
     gaugeList = Gauges[platform];
 
     if (!contracts[platform][network]) return null;
-
+    
     // declare arrays we will need
     var gauges = [];
     var incentives = {};
@@ -331,17 +340,18 @@ async function _getIncentivesByUser(network, user, platform=0) {
 // update curve gauges local storage, max once per day
 async function _getGauges(platform=0) {
     Gauges[platform] = await Promise.resolve(Gauges[platform]);
+    if (Gauges[platform] == undefined) { Gauges[platform] = {}; }
     if (Gauges[platform].lastUpdated == undefined) { Gauges[platform].lastUpdated = 0; }
-    if (Math.floor(Date.now() / 1000) - Gauges[platform].lastUpdated < 60 * 60 * 24) { return; } // do not query curve api more than once per day
+    if (Math.floor(Date.now() / 1000) - Gauges[platform].lastUpdated < 60 * 60 * 24) { return; }
     var GaugesRaw = [];
     try {
         GaugesRaw = await fetch(GaugeEndpoint[platform]).then(res => res.json());
     } catch (e) {
         console.log("Error: " + e);
-        console.log("Could not get curve gauges");
+        console.log("Could not get gauges");
         return null;
     }
-    if (GaugesRaw.success != true) { return; } // do not update if curve api returns error
+    if (GaugesRaw.success != true && GaugesRaw.msg != 'success') { return; } // do not update if  api returns error
     GaugesRaw = GaugesRaw.data; // remove success and data keys
     // build Gauges[platform] object
     Gauges[platform] = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
@@ -367,18 +377,32 @@ async function _getGauges(platform=0) {
         for (i in GaugesRaw.receiverToWeights) {
             if(GaugesRaw.receiverToWeights[i].weights.length > 1) {
                 for(w in GaugesRaw.receiverToWeights[i].weights) {
-                    gauge[GaugesRaw.receiverToWeights[i].weights[w].id] = {active:GaugesRaw.receiverToWeights[i].isActive, shortName:GaugesRaw.receiverToWeights[i].weights[w].type+"-"+GaugesRaw.receiverToWeights[i].name};
+                    gauge[GaugesRaw.receiverToWeights[i].weights[w].id] = {active:GaugesRaw.receiverToWeights[i].weights[w].isActive, shortName:GaugesRaw.receiverToWeights[i].weights[w].type+"-"+GaugesRaw.receiverToWeights[i].name};
+                    if(gauge[GaugesRaw.receiverToWeights[i].weights[w].id].active == false) {
+                        delete gauge[GaugesRaw.receiverToWeights[i].weights[w].id];
+                    }
                 }
             } else {
                 gauge[GaugesRaw.receiverToWeights[i].weights[0].id] = {active:GaugesRaw.receiverToWeights[i].isActive, shortName:GaugesRaw.receiverToWeights[i].name};
+                if(gauge[GaugesRaw.receiverToWeights[i].weights[0].id].active == false) {
+                    delete gauge[GaugesRaw.receiverToWeights[i].weights[0].id];
+                }
             }
         }
         for(i in gauge) {
             gauge[i].shortName = gauge[i].shortName.replace("Wrapped ","").replace(" Deposit", "").replace("Factory Crypto Pool", "");
             if(gauge[i].shortName == "Curve.fi : PRISMA/ETH") gauge[i].shortName = "Prisma PRISMA/ETH Curve";
+            gauge[i].shortName = gauge[i].shortName+"("+i+")";
         }
         Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
         pointer = "prismaGauges";
+    } else if(platform == 2) {
+        var gauge = {};
+        for (i in GaugesRaw) {
+            gauge[i] = {active:true, shortName:GaugesRaw[i].name+" ("+i.substr(0,6)+")"};
+        }
+        Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
+        pointer = "fxGauges";
     }
     // save gauges to storage
     storage.write(pointer, Gauges[platform]);
@@ -787,6 +811,8 @@ module.exports = {
             return await storage.read("depositData", _round);
         } else if(platform == 1) {
             return await storage.read("prismaDepositData", _round);
+        } else if(platform == 2) {
+            return await storage.read("fxDepositData", _round);
         }
     },
     // get incentives for a given round, using an optional offset from the current round
@@ -817,10 +843,13 @@ module.exports = {
             n++; // iterate through chains
         }
         // save to storage
+        if(Object.keys(incentives).length === 0) { return null; }
         if(platform == 0) {
             await storage.write("depositData", incentives, _round);
         } else if(platform == 1) {
             await storage.write("prismaDepositData", incentives, _round);
+        } else if(platform == 2) {
+            await storage.write("fxDepositData", incentives, _round);
         }
         return incentives;
     },
@@ -876,7 +905,10 @@ module.exports = {
             await storage.write("userDeposits", incentives, user.toLowerCase());
         } else if(platform == 1) {
             await storage.write("prismaUserDeposits", incentives, user.toLowerCase());
+        } else if(platform == 2) {
+            await storage.write("fxUserDeposits", incentives, user.toLowerCase());
         }
+        
         return incentives;
     },
     generateVlCVXMerkle: async function (fullsyncAddresses=false) {
@@ -906,7 +938,7 @@ module.exports = {
         if(_round == 0) _round = this.round(platform);
         Gauges[platform] = await this.updateGauges(platform); // grabs gauges storage and updates if data more than 24 hours old
         var incentives = await this.getIncentivesByRound(_round, platform); // get incentives for round
-
+        
         shot = await this.updateSnapshot(_round, 60 * 15, platform); // update if more than 15 minutes, and not finalized
         if (shot.votes == undefined) {
             console.log("Snapshot not available for round " + _round + ", platform " + platform);
