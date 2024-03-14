@@ -49,7 +49,7 @@ var querySize = 1000;
 var round = [];
 round[0] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
 round[1] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1405;
-round[2] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1412;
+round[2] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1413;
 var Gauges = [];
 Gauges[0] = storage.read("gauges"); // curve gauges
 Gauges[1] = storage.read("prismaGauges"); // prisma receivers
@@ -399,7 +399,7 @@ async function _getGauges(platform=0) {
     } else if(platform == 2) {
         var gauge = {};
         for (i in GaugesRaw) {
-            gauge[i] = {active:true, shortName:GaugesRaw[i].name+" ("+i.substr(0,6)+")"};
+            gauge[i] = {active:true, shortName:GaugesRaw[i].name};
         }
         Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
         pointer = "fxGauges";

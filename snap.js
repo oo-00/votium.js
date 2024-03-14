@@ -335,7 +335,7 @@ module.exports = {
             store = "prismaSnapshotVoteData";
         } else if(platform==2) {
             gauges = await storage.read("fxGauges");
-            pStr = "FXN Emissions Weight for Week";
+            pStr = "FXN Gauge Weight for Week";
             var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
             store = "fxSnapshotVoteData";
         }
@@ -362,7 +362,7 @@ module.exports = {
                 }
 
                 for (i = 0; i < proposals.length; i++) {
-                    if (proposals[i].title.indexOf(pStr) !== -1) {
+                    if (proposals[i].title.indexOf(pStr) === 0) {
                         // check if proposal was created after, but within 24 hours after round start
                         if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400) {
                             shot.id = proposals[i].id; // matched snapshot id
