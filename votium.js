@@ -57,7 +57,12 @@ Gauges[2] = storage.read("fxGauges"); // fxn gauges
 
 var vlCVXAddresses = storage.read("vlCVXAddresses"); // vlCVX address list
 
-function roundEpoch(_round, p) { return (_round+1348+(p*57)) * 86400 * 14; }
+function roundEpoch(_round, p) { 
+    if(p==1) return (_round+1405) * 86400 * 14;
+    if(p==2) return (_round+1413) * 86400 * 14;
+    if(p==0) return (_round+1348) * 86400 * 14; 
+    return null;
+}
 for(i in round) {
     if(Math.floor(Date.now()/1000)-roundEpoch(round[i], i) > 60*60*24*5) round[i]++; // if vote is over, default to next round
 }
