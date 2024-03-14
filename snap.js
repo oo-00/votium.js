@@ -336,7 +336,7 @@ module.exports = {
         } else if(platform==2) {
             gauges = await storage.read("fxGauges");
             pStr = "FXN Gauge Weight for Week";
-            var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
+            var roundstart = 1413 * 86400 * 14 + _round * 86400 * 14;
             store = "fxSnapshotVoteData";
         }
         gaugesReverse = {};
