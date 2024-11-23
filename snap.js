@@ -176,9 +176,8 @@ async function getVoteScores(block, voteAddresses, strategy, voter=null) {
 }
 
 async function getDelegates(voterAddress, snapshot_block, page) {
-    skip = (page*999);
     let res = await fetch(
-        "https://gateway.thegraph.com/api/0f15b42bdeff7a063a4e1757d7e2f99e/deployments/id/QmXvEzRJXby7KFuTr7NJsM47hGefM5VckEXZrQyZzL9eJd",
+        "https://subgrapher.snapshot.org/delegation/1",
         {
         headers: {
             "content-type": "application/json",
@@ -186,7 +185,7 @@ async function getDelegates(voterAddress, snapshot_block, page) {
         body:
             '{"query":"query { delegations (where: {delegate: \\"' +
             voterAddress +
-            '\\"},  orderBy:timestamp, orderDirection: asc, first: 1000, skip: '+skip+', block: { number: ' + snapshot_block + '}) { delegator space } }"}',
+            '\\", timestamp_gte: '+page+'},  orderBy:timestamp, orderDirection: asc, first: 1000, block: { number: ' + snapshot_block + '}) { delegator space timestamp } }"}',
         method: "POST",
         }
     );
@@ -196,17 +195,19 @@ async function getDelegates(voterAddress, snapshot_block, page) {
     let delegateList = [];
     let delegateListUpper = [];
     if (res.data != null) {
-    //console.log('Number of delegates: ' + res.data.delegations.length);
+        //console.log('Number of delegates: ' + res.data.delegations.length);
+        let lastTimestamp = 0;
         res.data.delegations.forEach((key) => {
-        if (key.space == "cvx.eth" || key.space == null || key.space == '') {
-            delegateList.push(key.delegator);
-            delegateListUpper.push(key.delegator.toUpperCase());
-        }
+            if (key.space == "cvx.eth" || key.space == null || key.space == '') {
+                delegateList.push(key.delegator);
+                delegateListUpper.push(key.delegator.toUpperCase());
+                lastTimestamp = key.timestamp;
+            }
         });
         addressList.normal = delegateList;
         addressList.upper = delegateListUpper;
         //console.log(delegateList);
-        return delegateList;
+        return [delegateList, lastTimestamp];
     }
     return null;
 }
@@ -227,6 +228,12 @@ async function getProposals(query) {
     } catch (e) {
         console.log(e)
     }
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
 }
 
 var voterPlaceholder = 0;
@@ -257,14 +264,31 @@ async function tally(toGrab, choices, voter=null) {
             //console.log("loading delegates from "+voters[i].voter);
             if(voters[i].voter == voter) { console.log("skipping "+voter+" delegations"); continue; }
             p = 0;
-            del = await getDelegates(voters[i].voter, snapshot_block, 0);
+            del = null;
+            while(del == null) {
+                del = await getDelegates(voters[i].voter, snapshot_block, 0);
+                if(del == null) {
+                    console.log("retrying delegation api");
+                    await sleep(1000);
+                }
+            }
             delegates = [];
-            delegates.push.apply(delegates, del)
-            while (del.length == 999 || del.length == 1000) {
-                p++;
+            delegates.push.apply(delegates, del[0])
+            while (del[0].length == 999 || del[0].length == 1000) {
+                // last record of del
+                p = del[1];
+                //console.log(p);
                 //console.log("reading delegates page "+(p+1));
-                del = await getDelegates(voters[i].voter, snapshot_block, p);
-                delegates.push.apply(delegates, del)
+                del = null;
+                while(del == null) {
+                    del = await getDelegates(voters[i].voter, snapshot_block, p);
+                    if(del == null) {
+                        console.log("retrying delegation api");
+                        await sleep(1000);
+                    }
+                }
+                //console.log(del);
+                delegates.push.apply(delegates, del[0])
             }
 
             if (delegates.length > 0) {
@@ -363,10 +387,11 @@ module.exports = {
 
                 for (i = 0; i < proposals.length; i++) {
                     if (proposals[i].title.indexOf(pStr) === 0) {
-                        // check if proposal was created after, but within 24 hours after round start
-                        if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400) {
+                        // check if proposal was created after, but within 72 hours after round start
+                        if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400*3) {
                             shot.id = proposals[i].id; // matched snapshot id
                             for(g in proposals[i].choices) {
+                                proposals[i].choices[g] = proposals[i].choices[g].trim();
                                 // create gauge list from choice names
                                 if(gaugesReverse[proposals[i].choices[g]] != undefined) {
                                     proposals[i].choices[g] = gaugesReverse[proposals[i].choices[g]];
