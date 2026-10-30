@@ -1,12 +1,20 @@
-const storage = require('./storageHandler.js');
 
 const { request, gql } = require('graphql-request');
 const fetch = require('node-fetch');
 const snapshot_endpoint = "https://hub.snapshot.org/graphql";
 const SNAPSHOT_SCORE_API = 'https://score.snapshot.org/api/scores';
-const fs = require('fs');
+const ethers = require('ethers');
+const { Contract, Provider } = require('./multicall.js'); // multicall, at an archive block
 var round = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
 
+// Snapshot vote tallying, for rounds voted on Snapshot (before on-chain voting): history only.
+//   const snap = require('./snap.js')({ storage, rpc })   rpc: an archive-capable mainnet RPC URL
+module.exports = function snap({ storage, rpc }) {
+
+// working variables (formerly implicit globals)
+var convexVote, respt, p, del, delegates, graceAdd, graceABI, provider, balanceStrat, multiBalance,
+    voterScores, graceCh, ptot, poolShot, userPower, userWeightDenominator, n, gauge, toPool, gauges,
+    pStr, store, gaugesReverse, g, proposals, res, query, i;
 
 async function grabProposal(hashId) {
     const proposalQuery = gql`
@@ -183,7 +191,7 @@ async function getDelegates(voterAddress, snapshot_block, page) {
             "content-type": "application/json",
         },
         body:
-            '{"query":"query { delegations (where: {delegate: \\"' +
+            '{"query":"query { delegations (where: {space_in: [\\"cvx.eth\\", \\"\\"], delegate: \\"' +
             voterAddress +
             '\\", timestamp_gte: '+page+'},  orderBy:timestamp, orderDirection: asc, first: 1000, block: { number: ' + snapshot_block + '}) { delegator space timestamp } }"}',
         method: "POST",
@@ -242,6 +250,33 @@ async function tally(toGrab, choices, voter=null) {
     var proposal = await grabProposal(toGrab);
     var snapshot_block = proposal.snapshot;
     var voters = await getVoters(toGrab);
+
+        // Start Round 95 exeption
+
+        if(toGrab == "0x3016b4856269e94064a8ddd5bd6d229a03f08471c011b6fa4ddbccd225b4e6aa") {
+            // get round 95 snapshot of votes
+            var addedVotes = 0;
+            var round95votes = await storage.read("95snapShot", "votes");
+            for(var v in round95votes) {
+                var found = false;
+                for(var i in voters) {
+                    if(voters[i].voter == round95votes[v].voter) {
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) {
+                    voters.push(round95votes[v]);
+                    console.log("added "+round95votes[v].voter+" to round 95 votes");
+                    addedVotes++;
+                }
+            }
+            console.log("added "+addedVotes+" votes to round 95");
+        }
+    
+    
+        // End Round 95 exception
+
     var votersCheck = [];
     for (var i in voters) {
         votersCheck.push(voters[i].voter);
@@ -250,9 +285,7 @@ async function tally(toGrab, choices, voter=null) {
         votersCheck.push(voter);
     }
     var voterAllScores = await getVoteAllScores(snapshot_block, votersCheck, proposal.strategies);
-    if (voterAllScores == null) {
-        return {};
-    }
+
     if(voter != null) {
         if(voterAllScores[1][voter] > 0) {
             voterPlaceholder = voterAllScores[1][voter];
@@ -311,8 +344,64 @@ async function tally(toGrab, choices, voter=null) {
             }
         }
     }
-    //console.log(JSON.stringify(proposal.strategies));
-    var voterScores = await getVoteScores(snapshot_block, votersCheck, proposal.strategies, voter);
+
+    var votersCheck2 = [];
+    // remove voters with no vlCVX
+    var batches = [[]];
+    var batchesA = [[]];
+    var batch = 0;
+    graceAdd = "0x81768695e9fDdA232491bec5B21Fd1BC1116F917";
+    graceABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address","name":"_account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lockDuration","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"locker","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"oldlocker","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rewardsDuration","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
+    provider = new ethers.JsonRpcProvider(rpc, 1, { staticNetwork: true });
+    balanceStrat = await new ethers.Contract(
+        graceAdd,
+        graceABI,
+        provider
+    );
+    const ethcallProvider = new Provider(provider, 1);
+    multiBalance = new Contract(graceAdd,graceABI);
+    for (var i in votersCheck) {
+        if(i % 100 == 0 && i > 0) {
+            batch++;
+            batches[batch] = [];
+            batchesA[batch] = [];
+        }
+        batches[batch].push(multiBalance.balanceOf(votersCheck[i]));
+        batchesA[batch].push(votersCheck[i]);
+    }
+    voterScores = {};
+    var proTotal = 0;
+    for(var i in batches) {
+        graceCh = await ethcallProvider.all(batches[i],snapshot_block);
+        if(graceCh == null) {
+            console.log("Grace contract call failed, retrying");
+            await sleep(1000);
+            graceCh = await ethcallProvider.all(batches[i],snapshot_block);
+        }
+        if(graceCh == null) {
+            console.log("Grace contract call failed again, exiting");
+            process.exit();
+        }
+        if(graceCh.length != batches[i].length) {
+            console.log("Grace contract call length mismatch, exiting");
+            process.exit();
+        }
+        for (var j in graceCh) {
+            if (graceCh[j].toString() != "0") {
+                votersCheck2.push(batchesA[i][j]);
+                voterScores[batchesA[i][j]] = Number(ethers.formatUnits(graceCh[j], 18));
+                proTotal += voterScores[batchesA[i][j]];
+            }
+        }
+        await sleep(250); // sleep to avoid rate limiting
+    }
+
+    if(voter != null) {
+        proTotal += voterPlaceholder;
+    }
+
+    console.log("Total votes counted: " + proTotal);
+    //var voterScores = await getVoteScores(snapshot_block, votersCheck2, proposal.strategies, voter);
 
     //console.log("-------");
     ptot = 0;
@@ -320,6 +409,9 @@ async function tally(toGrab, choices, voter=null) {
     for (i = 0; i < voters.length; i++) {
         if(voters[i].voter == voter) {
             console.log("skipping "+voter+" weights")
+            continue;
+        }
+        if(!voterScores[voters[i].voter]) {
             continue;
         }
         userPower = voterScores[voters[i].voter];
@@ -343,7 +435,7 @@ async function tally(toGrab, choices, voter=null) {
     }
     return poolShot;
 }
-module.exports = {
+return {
     endpoint: snapshot_endpoint,
     // update snapshot local storage for a specified round, with specified delay between updates
     updateSnapshot: async (delay, _round, platform=0, voter=null) => {
@@ -352,11 +444,6 @@ module.exports = {
             pStr = "Gauge Weight for Week";
             var roundstart = 1348 * 86400 * 14 + _round * 86400 * 14;
             store = "snapshotVoteData";
-        } else if(platform==1) {
-            gauges = await storage.read("prismaGauges");
-            pStr = "Prisma Emissions Weight for Week";
-            var roundstart = 1405 * 86400 * 14 + _round * 86400 * 14;
-            store = "prismaSnapshotVoteData";
         } else if(platform==2) {
             gauges = await storage.read("fxGauges");
             pStr = "FXN Gauge Weight for Week";
@@ -388,7 +475,7 @@ module.exports = {
                 for (i = 0; i < proposals.length; i++) {
                     if (proposals[i].title.indexOf(pStr) === 0) {
                         // check if proposal was created after, but within 72 hours after round start
-                        if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400*3) {
+                        if (proposals[i].created > roundstart && proposals[i].created < roundstart + 86400*5) {
                             shot.id = proposals[i].id; // matched snapshot id
                             for(g in proposals[i].choices) {
                                 proposals[i].choices[g] = proposals[i].choices[g].trim();
@@ -422,4 +509,5 @@ module.exports = {
         }
         return shot;
     }
-}
+};
+};

@@ -4,7 +4,10 @@ This example takes the compiled data from votium.roundObject() and displays it i
 
 */
 
-const votium = require('../votium.js');
+const votium = require('../votium.js')({
+    providers: { mainnet: process.env.RPC_URL },
+    storage: require('../storage/local.js')(__dirname + '/../storage'),
+});
 const ethers = require('ethers');
 
 const topleft = "┌"; const topright = "┐"; const bottomleft = "└"; const bottomright = "┘";

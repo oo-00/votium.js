@@ -5,44 +5,47 @@ As well as different ways to call the data, depending on your needs
 
 Please remember to properly setup config files before running these examples
     
-Several functions accept an optional "platform" parameter, which is 0 for vlCVX CRV-FRAX and 1 for vlCVX Prisma
+Several functions accept an optional "platform" parameter, which is 0 for vlCVX Curve, 2 for vlCVX f(x) and 3 for veYB (1 was Prisma, removed).
 If you do not pass this parameter, it will default to 0
 
 */
 
-const votium = require('../votium.js');
+const votium = require('../votium.js')({
+    providers: { mainnet: process.env.RPC_URL },
+    storage: require('../storage/local.js')(__dirname + '/../storage'),
+});
 const ethers = require('ethers');
 
 
 async function examples() {
     // Returns current round number
     console.log("vlCVX CRV-FRAX round: " + votium.round());
-    console.log("vlCVX Prisma round: " + votium.round(1));
+    console.log("vlCVX f(x) round: " + votium.round(2));
 
     // Returns supported networks
     console.log("vlCVX CRV-FRAX networks: "); console.log(votium.networks());
-    console.log("vlCVX Prisma networks: "); console.log(votium.networks(1));
+    console.log("vlCVX f(x) networks: "); console.log(votium.networks(2));
 
     // Returns storage type
     console.log("storage type: " + votium.storageType);
     
     // Map of gauge addresses to gauge shortNames
     curveGauges = await votium.updateGauges();
-    prismaGauges = await votium.updateGauges(1);
+    fxGauges = await votium.updateGauges(2);
 
     console.log("curveGauges " + Object.keys(curveGauges.gauges).length);
-    console.log("prismaGauges " + Object.keys(prismaGauges.gauges).length);
+    console.log("fxGauges " + Object.keys(fxGauges.gauges).length);
 
     // Incentives by offset
     incentivesCRVFRAX = await votium.getIncentivesByOffset(0);
-    incentivesPRISMA = await votium.getIncentivesByOffset(0,1);
+    incentivesFXN = await votium.getIncentivesByOffset(0,2);
     
 
     /*
 
     // Returns deposits from a specific user, we'll call for all users with deposits in the current round
     await userDs(incentivesCRVFRAX, 0);
-    await userDs(incentivesPRISMA, 1);
+    await userDs(incentivesFXN, 2);
 
     
     console.log("----------------------\nUpdate snapshot example")
@@ -68,12 +71,12 @@ async function examples() {
             }
         }
     }
-    for (chain in incentivesPRISMA) {
-        for (g in incentivesPRISMA[chain]) {
-            for (i in incentivesPRISMA[chain][g]) {
-                if (prices[incentivesPRISMA[chain][g][i].token] == undefined) {
-                    prices[incentivesPRISMA[chain][g][i].token] = 0;
-                    priceString += ',' + incentivesPRISMA[chain][g][i].token;
+    for (chain in incentivesFXN) {
+        for (g in incentivesFXN[chain]) {
+            for (i in incentivesFXN[chain][g]) {
+                if (prices[incentivesFXN[chain][g][i].token] == undefined) {
+                    prices[incentivesFXN[chain][g][i].token] = 0;
+                    priceString += ',' + incentivesFXN[chain][g][i].token;
                 }
             }
         }
@@ -89,7 +92,7 @@ async function examples() {
     var roundObject = await votium.roundObject();
     console.log(roundObject);
 
-    var roundObject = await votium.roundObject(votium.round(1)-1, 1);
+    var roundObject = await votium.roundObject(votium.round(2)-1, 2);
     console.log(roundObject);
 
     if(votium.storageType == "firebase") {

@@ -48,6 +48,25 @@
         "inputs": [
             {
                 "indexed": false,
+                "internalType": "address",
+                "name": "_gauge",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "_allow",
+                "type": "bool"
+            }
+        ],
+        "name": "GaugeAllow",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
                 "internalType": "uint256",
                 "name": "_index",
                 "type": "uint256"
@@ -78,9 +97,9 @@
             },
             {
                 "indexed": true,
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "indexed": false,
@@ -153,9 +172,9 @@
             },
             {
                 "indexed": true,
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "indexed": false,
@@ -228,19 +247,6 @@
         "inputs": [
             {
                 "indexed": false,
-                "internalType": "address",
-                "name": "_distributor",
-                "type": "address"
-            }
-        ],
-        "name": "UpdatedDistributor",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
                 "internalType": "uint256",
                 "name": "_feeAmount",
                 "type": "uint256"
@@ -266,9 +272,9 @@
             },
             {
                 "indexed": true,
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "indexed": false,
@@ -309,9 +315,9 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "_token",
-                "type": "address"
+                "internalType": "address[]",
+                "name": "_gauges",
+                "type": "address[]"
             },
             {
                 "internalType": "bool",
@@ -319,7 +325,7 @@
                 "type": "bool"
             }
         ],
-        "name": "allowToken",
+        "name": "allowGauges",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -362,8 +368,34 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_length",
+                "type": "uint256"
+            }
+        ],
+        "name": "changeDeadlineDuration",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "currentEpoch",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "deadlineDuration",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -392,9 +424,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -425,9 +457,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "name": "depositIncentiveSimple",
@@ -453,9 +485,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256",
@@ -491,9 +523,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256",
@@ -529,9 +561,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -562,9 +594,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256[]",
@@ -600,9 +632,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256[]",
@@ -633,9 +665,9 @@
                 "type": "address"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256[]",
@@ -669,9 +701,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256",
@@ -692,9 +724,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "address",
@@ -781,6 +813,25 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "gaugeAllowed",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint256",
                 "name": "_round",
                 "type": "uint256"
@@ -805,9 +856,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "name": "inRoundGauges",
@@ -829,9 +880,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -883,9 +934,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "name": "incentivesLength",
@@ -907,9 +958,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -940,9 +991,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -966,49 +1017,6 @@
             }
         ],
         "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_token",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "_amount",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "_round",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "_gauge",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "_maxPerVote",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address[]",
-                "name": "_excluded",
-                "type": "address[]"
-            },
-            {
-                "internalType": "address",
-                "name": "_depositor",
-                "type": "address"
-            }
-        ],
-        "name": "manualIncentive",
-        "outputs": [],
-        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -1076,9 +1084,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -1127,9 +1135,9 @@
         "name": "roundGauges",
         "outputs": [
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "stateMutability": "view",
@@ -1169,9 +1177,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "address[]",
@@ -1197,9 +1205,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256[]",
+                "internalType": "address[]",
                 "name": "_gauges",
-                "type": "uint256[]"
+                "type": "address[]"
             },
             {
                 "internalType": "uint256[]",
@@ -1248,19 +1256,6 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "_distributor",
-                "type": "address"
-            }
-        ],
-        "name": "updateDistributor",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
                 "name": "_feeAddress",
                 "type": "address"
             }
@@ -1291,9 +1286,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -1341,7 +1336,7 @@
                         "type": "address[]"
                     }
                 ],
-                "internalType": "struct VotiumVlCVXPrisma.Incentive",
+                "internalType": "struct VotiumVeYB.Incentive",
                 "name": "",
                 "type": "tuple"
             }
@@ -1376,9 +1371,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "",
-                "type": "uint256"
+                "type": "address"
             }
         ],
         "name": "votesReceived",
@@ -1400,9 +1395,9 @@
                 "type": "uint256"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
                 "name": "_gauge",
-                "type": "uint256"
+                "type": "address"
             },
             {
                 "internalType": "uint256",

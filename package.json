@@ -1,13 +1,31 @@
 {
+  "name": "votium.js",
+  "version": "2.0.0",
+  "description": "Votium deposits, rounds, gauges and vote tallies for vlCVX (Curve, f(x)) and veYB",
+  "main": "votium.js",
+  "files": [
+    "votium.js",
+    "onchainVotes.js",
+    "optOuts.js",
+    "multicall.js",
+    "snap.js",
+    "deployments.json",
+    "abis/",
+    "storage/local.js",
+    "storage/firebase.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "@pelith/ethers-multicall": "^0.2.3",
+    "cvxonchain": "github:oo-00/cvxOnchain#v1.0.0",
     "ethereum-block-by-date": "^1.4.9",
-    "ethers": "5.4",
-    "ethers-multicall": "^0.2.3",
-    "firebase-functions": "^4.4.1",
+    "ethers": "^6.17.0",
     "graphql-request": "^6.1.0",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.3.10",
     "node-fetch": "2.6"
-  }
+  },
+  "license": "MIT",
+  "repository": "github:oo-00/votium.js"
 }
