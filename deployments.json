@@ -1,20 +1,11 @@
 {
     "vlcvxCurveFrax": {
-        "mainnet": "0x63942E31E98f1833A234077f47880A66136a2D1e",
-        "zkevm": "",
-        "optimism": "",
-        "arbitrum": ""
+        "mainnet": "0x63942E31E98f1833A234077f47880A66136a2D1e"
     },
     "vlcvxFXN": {
-        "mainnet": "0x2272B9a1ce6503f9428E4179eBcdc2690eF28469",
-        "zkevm": "",
-        "optimism": "",
-        "arbitrum": ""
+        "mainnet": "0x2272B9a1ce6503f9428E4179eBcdc2690eF28469"
     },
     "veYB": {
-        "mainnet": "0xbe1b9594506b4e7edc69cc3d762a2b4c8871d1d6",
-        "zkevm": "",
-        "optimism": "",
-        "arbitrum": ""
+        "mainnet": "0xbe1b9594506b4e7edc69cc3d762a2b4c8871d1d6"
     }
 }

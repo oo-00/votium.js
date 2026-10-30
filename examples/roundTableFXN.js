@@ -6,7 +6,7 @@ This example takes the compiled data from votium.roundObject() and displays it i
 
 const votium = require('../votium.js')({
     providers: { mainnet: process.env.RPC_URL },
-    storage: require('../storage/local.js')(__dirname + '/../storage'),
+    storage: require('../storage/local.js')(__dirname + '/storage'), // built as the examples run (git ignores it)
 });
 const ethers = require('ethers');
 

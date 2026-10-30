@@ -6,9 +6,8 @@
 //   const mc = new Provider(provider);                    // an ethers 6 provider
 //   const [decimals, symbol] = await mc.all([token.decimals(), token.symbol()], blockTag);
 //
-// Calls go through Multicall3's aggregate(), at the same address on mainnet, Optimism, Arbitrum and
-// Polygon zkEVM. Like ethers-multicall, one failing call fails the whole batch, and a function with
-// one output returns that value, with several a Result.
+// Calls go through Multicall3's aggregate() (the same address on every chain). Like ethers-multicall, one
+// failing call fails the whole batch, and a function with one output returns that value, with several a Result.
 
 const { ethers } = require('ethers');
 
@@ -54,6 +53,7 @@ class Provider {
 
     // the calls' results in order, read at blockTag if given
     async all(calls, blockTag) {
+        if (calls.length == 0) { return []; }
         const requests = calls.map((c) => ({ target: c.contract.address, callData: c.contract.interface.encodeFunctionData(c.fragment, c.params) }));
         const [, returnData] = await this.multicall.aggregate.staticCall(requests, blockTag === undefined ? {} : { blockTag });
         return calls.map((c, i) => {

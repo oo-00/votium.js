@@ -117,15 +117,13 @@ async function getVoteAllScores(block, voteAddresses, strategy) {
     var response = await fetch(SNAPSHOT_SCORE_API, init);
     try {
         var obj = await response.json();
-        if(obj.result.scores == undefined) {
-            respt = await response.text();
-            console.log(respt);
-            process.exit();
+        if(!obj.result || obj.result.scores == undefined) {
+            console.log("Snapshot score API returned no scores: " + JSON.stringify(obj).slice(0, 300));
+            return null;
         }
         return obj.result.scores;
     } catch (e) {
-        console.log(e);
-        console.log(await response.text());
+        console.log(e); // the body is already read, so there's no text to print
         return null;
     }
 }
@@ -150,10 +148,8 @@ async function getVoteScores(block, voteAddresses, strategy, voter=null) {
     //console.log(util.inspect(init, false, null));
     var response = await fetch(SNAPSHOT_SCORE_API, init);
     var obj = await response.json();
-    if(obj.result.scores == undefined) {
-        respt = await response.text();
-        console.log(respt);
-        process.exit();
+    if(!obj.result || obj.result.scores == undefined) {
+        throw new Error("Snapshot score API returned no scores: " + JSON.stringify(obj).slice(0, 300));
     }
 //  console.log(util.inspect(obj.result.scores, false, null));
     var totalAddresses = {};
@@ -254,9 +250,20 @@ async function tally(toGrab, choices, voter=null) {
         // Start Round 95 exeption
 
         if(toGrab == "0x3016b4856269e94064a8ddd5bd6d229a03f08471c011b6fa4ddbccd225b4e6aa") {
-            // get round 95 snapshot of votes
+            // Round 95's votes as captured during the round (v2's 95snapShot node, whose votes this uses). Votes
+            // that later changed on Snapshot were paid as captured, and only this capture still has them. It
+            // ships as data/95snapShot.json; a store that has it (v2's Firebase, say) is the fallback.
             var addedVotes = 0;
-            var round95votes = await storage.read("95snapShot", "votes");
+            var round95votes;
+            try {
+                round95votes = require('./data/95snapShot.json').votes;
+            } catch (e) {
+                if (e.code !== 'MODULE_NOT_FOUND') { throw e; }
+                round95votes = await storage.read("95snapShot", "votes");
+            }
+            if (round95votes == null) {
+                throw new Error("Round 95 needs its vote capture: data/95snapShot.json (v2's 95snapShot/votes)");
+            }
             for(var v in round95votes) {
                 var found = false;
                 for(var i in voters) {
@@ -372,19 +379,16 @@ async function tally(toGrab, choices, voter=null) {
     voterScores = {};
     var proTotal = 0;
     for(var i in batches) {
-        graceCh = await ethcallProvider.all(batches[i],snapshot_block);
-        if(graceCh == null) {
-            console.log("Grace contract call failed, retrying");
+        // a failed multicall throws: retry it once, and let a second failure throw to the caller
+        try {
+            graceCh = await ethcallProvider.all(batches[i],snapshot_block);
+        } catch (e) {
+            console.log("Grace contract call failed (" + (e.shortMessage || e.message) + "), retrying");
             await sleep(1000);
             graceCh = await ethcallProvider.all(batches[i],snapshot_block);
         }
-        if(graceCh == null) {
-            console.log("Grace contract call failed again, exiting");
-            process.exit();
-        }
         if(graceCh.length != batches[i].length) {
-            console.log("Grace contract call length mismatch, exiting");
-            process.exit();
+            throw new Error("Grace contract call returned " + graceCh.length + " results for " + batches[i].length + " calls");
         }
         for (var j in graceCh) {
             if (graceCh[j].toString() != "0") {

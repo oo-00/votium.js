@@ -49,6 +49,9 @@ module.exports = function optOuts({ cvx }) {
             const [page, nextIndex, done] = await reg.optOutAtEpochFrom(gauge, epoch, start, 500);
             users = users.concat(page);
             if (done) { break; }
+            if (Number(nextIndex) <= start) {
+                throw new Error(`Opt-out list for ${gauge} at epoch ${epoch}: page at ${start} returned next index ${nextIndex} without finishing`);
+            }
             start = Number(nextIndex);
         }
         const count = Number(await reg.optOutCountAtEpoch(gauge, epoch));

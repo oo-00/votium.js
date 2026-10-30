@@ -6,12 +6,11 @@
 //   });
 //
 // Options:
-//   providers   RPC URLs by network: mainnet (required), zkevm, optimism, arbitrum
+//   providers   { mainnet: RPC URL } (required): Votium's deposit contracts are all on mainnet
 //   storage     { read(key, suffix), write(key, value, suffix) }: storage/local.js, storage/firebase.js,
 //               or your own
 //   cvx         a cvxonchain instance (built from providers.mainnet if left out)
 //   logBlocksLimit  max blocks per log query, default 10000 (Infura's limit)
-//   l2votePlatform, delegationRegistry, vlCVXLocker   legacy contract overrides
 // Nothing is read and no RPC is made until a function is called.
 
 // local json files
@@ -20,16 +19,10 @@ const depositAbi = require('./abis/votium.json');
 const depositVlcvxFXNAbi = require('./abis/votiumVlCVXFXN.json');
 const depositVeYBAbi = require('./abis/votiumVeYB.json');
 const erc20Abi = require('./abis/erc20.json');
-const l2Abi = require('./abis/l2platform.json');
-const lockerAbi = require('./abis/locker.json');
-const delegationAbi = require('./abis/delegation.json');
 
 
 // outside libraries
 const { ethers } = require('ethers');
-const EthDater = require('ethereum-block-by-date');
-const { MerkleTree } = require('merkletreejs')
-const keccak256 = require('keccak256')
 // multicall call builders (ethers-multicall's API, on ethers 6 and Multicall3), archive block tags included
 const { Contract, Provider } = require('./multicall.js');
 const fetch = require('node-fetch');
@@ -43,8 +36,9 @@ const createOnchainVotes = require('./onchainVotes.js');
 // Votium's opt-out registries (Curve, f(x))
 const createOptOuts = require('./optOuts.js');
 
-// chain ids of the networks votium.js knows, so their providers never ask the RPC for one
-const CHAIN_IDS = { mainnet: 1, optimism: 10, arbitrum: 42161, zkevm: 1101 };
+// round start times, and the Convex proposal a round is voted on
+const { roundEpoch, roundProposal } = require('./rounds.js');
+
 
 // Platform slots: 0 Curve, 2 f(x), 3 YB. Slot 1 was Prisma, now removed; the numbers stay
 // fixed so stored data and indexes keep their meaning.
@@ -65,9 +59,6 @@ if (!storage || typeof storage.read !== "function" || typeof storage.write !== "
 }
 const config = {
     logBlocksLimit: 10000, // max blocks per log query (Infura's limit)
-    l2votePlatform: "0x6d024fa49de64a975980cddd4c3212492d189e57",
-    delegationRegistry: "0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446",
-    vlCVXLocker: "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
     ...options,
     providers: { ...(options.providers || {}) }
 };
@@ -79,17 +70,8 @@ const snap = createSnap({ storage, rpc: config.providers.mainnet });
 const onchainVotes = createOnchainVotes({ storage, cvx });
 const optOuts = createOptOuts({ cvx });
 
-// Working variables the functions below share. They used to be implicit globals, shared by every
-// module in the process; now each instance has its own.
-var i, j, k, n, r, g, w, v, gi, id, mProvider, vlCVXmLocker, infoRaw, info, poolName, active, endBlock,
-    userIncentives, roundd, weight, addressArray, currentEpoch, latestIndex, epochIndex, _date,
-    totalVlCVX, globalCheckList, totalDelegated, userlist, chain, call, formatted, blocktime, tree,
-    Gauge, prices, priceString, shot, target_block, userBase, userAdjusted, userDelegation, eventsAll,
-    decimals, symbols, gauge, incentivesRaw, user;
-
 // declaring some variables used in multiple scopes
 
-var dater; // eth-dater instance, not initialized until mainnet provider is initialized
 
 var coingecko = "https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=usd&contract_addresses=";
 
@@ -147,123 +129,69 @@ const YB_API = "https://api.yieldbasis.com";
 const YB_CONTROLLER = "0x1be14811a3a06f6af4fa64310a636e1df04c1c21";
 const ybControllerIface = new ethers.Interface(["function n_gauges() view returns (uint256)", "function is_killed(address) view returns (bool)"]);
 const symbolIface = new ethers.Interface(["function symbol() view returns (string)"]);
+const erc20Iface = new ethers.Interface(erc20Abi);
 
 var calls = {};
 var providers = {};
 var mProviders = {};
 var contracts = [{},{},{},{}];
 var mContracts = [{},{},{},{}];
-var l2platform;
-var ml2platform;
-var vlCVXLocker;
-var delegationRegistry;
-var querySize = 1000;
 var round = [];
 round[0] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1348;
 round[2] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 14)) - 1413;
 round[3] = Math.floor(Math.floor(Date.now() / 1000) / (86400 * 7)) - 2910;
 var Gauges = []; // per platform, loaded from storage on first use (_loadGauges)
 
-var vlCVXAddresses = {}; // legacy vlCVX address list, rebuilt by _getVlCVXAddresses
 
-function roundEpoch(_round, p) { 
-    if(p==2) return (_round+1413) * 86400 * 14;
-    if(p==0) return (_round+1348) * 86400 * 14; 
-    if(p==3) return (_round+2910) * 86400 * 7;
-    return null;
-}
-for(i in round) {
-    if(i != 3) {
-        if(Math.floor(Date.now()/1000)-roundEpoch(round[i], i) > 60*60*24*5) round[i]++; // if vote is over, default to next round
+for(var ri in round) {
+    if(ri != 3) {
+        if(Math.floor(Date.now()/1000)-roundEpoch(round[ri], ri) > 60*60*24*5) round[ri]++; // if vote is over, default to next round
     }
 }
 
 // Initialize providers and votium deposit contracts (single and multicall)
 
-for (i in config.providers) {
-    // skip if provider is not defined
-    if (config.providers[i] == "") continue;
-    try {
-        // single and multicall uses separate providers and contract instances
-        // a fixed network: no chain id lookups, and no endless startup retries when an RPC is down
-        providers[i] = CHAIN_IDS[i]
-            ? new ethers.JsonRpcProvider(config.providers[i], CHAIN_IDS[i], { staticNetwork: true })
-            : new ethers.JsonRpcProvider(config.providers[i]);
-        mProviders[i] = new Provider(providers[i]);
-        if(i == "zkevm" && config.l2votePlatform != undefined) {
-            l2platform = new ethers.Contract(config.l2votePlatform, l2Abi, providers[i]);
-            ml2platform = new Contract(config.l2votePlatform, l2Abi);
-        } else if(i == "mainnet") {
-            mProvider = new Provider(providers[i]);
-            dater = new EthDater(providers[i]);
-            vlCVXLocker = new ethers.Contract(config.vlCVXLocker, lockerAbi, providers[i]);
-            vlCVXmLocker = new Contract(config.vlCVXLocker, lockerAbi); // read at an archive block
-            delegationRegistry = new Contract(config.delegationRegistry, delegationAbi);
-        }
-        if(deployments.vlcvxCurveFrax[i] != "") {
-            contracts[0][i] = new ethers.Contract(deployments.vlcvxCurveFrax[i], depositAbi, providers[i]);
-            mContracts[0][i] = new Contract(deployments.vlcvxCurveFrax[i], depositAbi);
-        }
-        
-        if(deployments.vlcvxFXN[i] != "") {
-            contracts[2][i]  = new ethers.Contract(deployments.vlcvxFXN[i], depositVlcvxFXNAbi, providers[i]);
-            mContracts[2][i]  = new Contract(deployments.vlcvxFXN[i], depositVlcvxFXNAbi);
-        }
-
-        if(deployments.veYB[i] != "") {
-            contracts[3][i]  = new ethers.Contract(deployments.veYB[i], depositVeYBAbi, providers[i]);
-            mContracts[3][i]  = new Contract(deployments.veYB[i], depositVeYBAbi);
-        }
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not connect to " + i);
-    }
+// The mainnet provider and Votium's deposit contracts (single calls and multicall). Data stays keyed by network
+// ("mainnet"), as v1 stored it. A fixed network: no chain id lookups, and no endless startup retries when the RPC
+// is down.
+providers.mainnet = new ethers.JsonRpcProvider(config.providers.mainnet, 1, { staticNetwork: true });
+mProviders.mainnet = new Provider(providers.mainnet);
+for (const [platform, name, abi] of [[0, "vlcvxCurveFrax", depositAbi], [2, "vlcvxFXN", depositVlcvxFXNAbi], [3, "veYB", depositVeYBAbi]]) {
+    contracts[platform].mainnet = new ethers.Contract(deployments[name].mainnet, abi, providers.mainnet);
+    mContracts[platform].mainnet = new Contract(deployments[name].mainnet, abi);
 }
 
-function bufToHex(buffer) { // buffer is an ArrayBuffer
-    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('')
+// a token's symbol: a string, or bytes32 for some older tokens (MKR, say); null if it's neither
+function _decodeSymbol(data) {
+    try { return erc20Iface.decodeFunctionResult("symbol", data)[0]; } catch (e) {}
+    try { return ethers.decodeBytes32String(ethers.dataSlice(data, 0, 32)); } catch (e) {}
+    return null;
 }
 
+// decimals and symbol of each deposited token (the deposit contracts are on mainnet). A token that reverts on
+// either, or answers in a form that won't decode, gets 18 decimals or its address as the symbol, so one odd token
+// doesn't fail the whole round's read.
 async function _getTokenInfoFromIncentives(network, incentivesRaw) {
-
-    // get decimals for each token, this will make it easier to display amounts correctly in frontend
     var decimals = {};
     var symbols = {};
-    var tokenContracts = {};
-
-    calls[network] = [];
-    for(i in incentivesRaw) {
-        // only add decimals call if we haven't already
-        if(decimals[incentivesRaw[i].token] == undefined) {
-            // initialize token contract if we haven't already
-            tokenContracts[incentivesRaw[i].token] = new Contract(incentivesRaw[i].token, erc20Abi);
-            decimals[incentivesRaw[i].token] = 0; // placeholder so we don't call decimals more than once
-            calls[network].push(tokenContracts[incentivesRaw[i].token].decimals());
-            calls[network].push(tokenContracts[incentivesRaw[i].token].symbol());
+    var tokens = [...new Set(incentivesRaw.map((x) => x.token))];
+    var leaves = [];
+    for (var t of tokens) {
+        leaves.push({ target: t, callData: erc20Iface.encodeFunctionData("decimals"), allowFailure: true, decode: (d) => { try { return Number(erc20Iface.decodeFunctionResult("decimals", d)[0]); } catch (e) { return null; } } });
+        leaves.push({ target: t, callData: erc20Iface.encodeFunctionData("symbol"), allowFailure: true, decode: _decodeSymbol });
+    }
+    var results = tokens.length > 0 ? await cvx.batchCall(leaves) : [];
+    var unknownDecimals = new Set();
+    tokens.forEach((t, k) => {
+        decimals[t] = results[2 * k] != null ? results[2 * k] : 18;
+        if (results[2 * k] == null) { unknownDecimals.add(t); }
+        symbols[t] = results[2 * k + 1] != null ? results[2 * k + 1] : t;
+        if (results[2 * k] == null || results[2 * k + 1] == null) {
+            console.log("Token " + t + ": " + (results[2 * k] == null ? "no decimals(), using 18" : "") + (results[2 * k + 1] == null ? " no readable symbol(), using its address" : ""));
         }
-    }
-    try {
-        // unmapped decimals
-        infoRaw = await mProviders[network].all(calls[network]);
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get token info for " + network);
-        return null;
-    }
-    // reset decimals array so we can map in the same order we built
-    decimals = {};
-    n = 0; // map counter
-    for(i in incentivesRaw) {
-        // only map decimals if we haven't already (same order as calls)
-        if(decimals[incentivesRaw[i].token] == undefined) {
-            decimals[incentivesRaw[i].token] = infoRaw[n];
-            n++;
-            symbols[incentivesRaw[i].token] = infoRaw[n];
-            n++;
-        }
-    }
-    info = {decimals: decimals, symbols: symbols};
-    return info;
+    });
+    // unknownDecimals: tokens whose 18 decimals is assumed, not read; their deposits carry decimalsUnknown: true
+    return { decimals: decimals, symbols: symbols, unknownDecimals: unknownDecimals };
 }
 // storage key for a platform's gauge list
 function gaugeKey(platform) {
@@ -275,7 +203,7 @@ function gaugeKey(platform) {
 async function _loadGauges(platform) {
     Gauges[platform] = await Promise.resolve(Gauges[platform]);
     if (Gauges[platform] == undefined) { Gauges[platform] = await storage.read(gaugeKey(platform)); }
-    return Gauges[platform] || { gauges: {} };
+    return (Gauges[platform] && Gauges[platform].gauges) ? Gauges[platform] : { gauges: {} };
 }
 
 // vlCVX withheld by the opt-out registries, per gauge, at the round's proposal epoch.
@@ -283,7 +211,7 @@ async function _loadGauges(platform) {
 async function _withheld(_round, platform, gauges) {
     var name = VOTE_PLATFORMS[platform];
     if (name == null || gauges.length == 0) { return {}; }
-    var proposalId = Math.floor((Math.floor((roundEpoch(_round, platform) - 1646265600) / (86400 * 7)) - 230) / 2);
+    var proposalId = roundProposal(_round, platform);
     var epoch;
     try {
         epoch = Number((await cvx.gaugeProposals(name, proposalId)).epoch);
@@ -295,6 +223,7 @@ async function _withheld(_round, platform, gauges) {
 
 // get incentives for a specified network and round number
 async function _getIncentives(network, _round, platform=0) {
+    var info, decimals, symbols, poolName, active;
     
     // initialize providers and contracts
     await mProviders[network].init()
@@ -357,25 +286,24 @@ async function _getIncentives(network, _round, platform=0) {
     decimals = info.decimals;
     symbols = info.symbols;
 
+    // the list's entries by lowercase address (its keys are checksummed; lists stored before 2.0.0 had one
+    // lowercase key)
+    var listed = {};
+    for (var fg in gaugeList.gauges) { listed[fg.toLowerCase()] = gaugeList.gauges[fg]; }
+
     // build incentives object
     var n = 0; // map counter
     // building in the same way as we built the calls for incentivesRaw
     for (var i = 0; i < gauges.length; i++) {
         incentives[gauges[i]] = []; // initialize gauge incentive array
 
-        var gpa = "0x0";
-        for(var fg in gaugeList.gauges) {
-            if(fg.toUpperCase() == gauges[i].toUpperCase()) {
-                gpa = fg;
-            }
-        }
-        
-        if(gaugeList.gauges[gpa] == undefined) {
+        var entry = listed[gauges[i].toLowerCase()];
+        if(entry == undefined) {
             poolName = "Unknown (" + gauges[i].substr(0,6) + "...)";
             active = false;
         } else {
-            poolName = gaugeList.gauges[gpa].shortName;
-            active = gaugeList.gauges[gpa].active;
+            poolName = entry.shortName;
+            active = entry.active;
         }
         for (var j = 0; j < incentivesLengths[i]; j++) {
             incentives[gauges[i]][j] = {
@@ -390,8 +318,9 @@ async function _getIncentives(network, _round, platform=0) {
                 "depositor": incentivesRaw[n].depositor,
                 "poolActive": active,
             };
+            if (info.unknownDecimals.has(incentivesRaw[n].token)) { incentives[gauges[i]][j].decimalsUnknown = true; }
             // if _round is earlier than current round, include additional data
-            if(_round < round) {
+            if(_round < round[platform]) {
                 incentives[gauges[i]][j].distributed = incentivesRaw[n].distributed.toString();
                 incentives[gauges[i]][j].recycled = incentivesRaw[n].recycled.toString();
             }
@@ -404,36 +333,38 @@ async function _getIncentives(network, _round, platform=0) {
 
 // get incentives for a specified network and depositor
 async function _getIncentivesByUser(network, user, platform=0) {
+    var i, r, g, n, endBlock, userIncentives, roundd, gauge, id, incentivesRaw, info, decimals;
     // initialize providers and contracts
     await mProviders[network].init()
-    var pointer = gaugeKey(platform);
-
-    Gauges[platform] = await storage.read(pointer);
-    var gaugeList = Gauges[platform];
+    var gaugeList = await _loadGauges(platform);
 
     if (!contracts[platform][network]) return null;
     
 
     var currentBlock = await providers[network].getBlockNumber();
-    var startBlock = currentBlock-200000; // deployment block
+    // the last 200,000 blocks (about 28 days): deposits from before that are kept from the stored record
+    // (see getIncentivesByUser), so each refresh only reads the recent ones
+    var startBlock = currentBlock-200000;
 
-
-    // get all incentives where _depositor == user
-    // batch in 100000 block increments
-    var eventsAll = [];
-    // non-overlapping windows of logBlocksLimit blocks (from and to both inclusive): RPCs cap the
-    // block range of a log query (Infura: 10,000), and v1's [start, start + 100000] windows, which
-    // also reused endBlock as the next start (reading the boundary block twice), were rejected
+    // get all incentives where _depositor == user, in non-overlapping windows of logBlocksLimit blocks (from and to
+    // both inclusive): RPCs cap a log query's block range (Infura: 10,000). v1's [start, start + 100000] windows,
+    // which also reused endBlock as the next start, were rejected.
+    var windows = [];
     while(startBlock <= currentBlock){
         endBlock = startBlock + config.logBlocksLimit - 1;
         if(endBlock > currentBlock){
             endBlock = currentBlock;
         }
-        //console.log("getting incentives from " + startBlock + " to " + endBlock);
-        eventsAll.push(contracts[platform][network].queryFilter(contracts[platform][network].filters.NewIncentive(null, null, null, null, null, null, null, user),startBlock,endBlock));
+        windows.push([startBlock, endBlock]);
         startBlock = endBlock + 1;
     }
-    eventsAll = await Promise.all(eventsAll);
+    // a few windows at a time: some RPCs reject large batches or bursts of log queries
+    var depositContract = contracts[platform][network];
+    var eventsAll = [];
+    for (var w = 0; w < windows.length; w += 4) {
+        eventsAll = eventsAll.concat(await Promise.all(windows.slice(w, w + 4).map(([from, to]) =>
+            depositContract.queryFilter(depositContract.filters.NewIncentive(null, null, null, null, null, null, null, user), from, to))));
+    }
     var events = [];
     for(var i=0; i < eventsAll.length; i++){
         events = events.concat(eventsAll[i]);
@@ -464,12 +395,16 @@ async function _getIncentivesByUser(network, user, platform=0) {
     }
     catch (e) {
         console.log("Error: " + e);
-        console.log("Could not get incentives for " + network + " round " + _round + " gauge " + gauges[i] + " incentive " + j);
+        console.log("Could not get incentives for " + network + " depositor " + user);
         return null;
     }
 
     info = await _getTokenInfoFromIncentives(network, incentivesRaw);
     decimals = info.decimals;
+
+    // the list's entries by lowercase address, as in _getIncentives
+    var listed = {};
+    for (var fg in gaugeList.gauges) { listed[fg.toLowerCase()] = gaugeList.gauges[fg]; }
 
     // build incentives object
     var n = 0; // map counter
@@ -477,28 +412,33 @@ async function _getIncentivesByUser(network, user, platform=0) {
     for(r in userIncentives) {
         for(g in userIncentives[r]) {
             for(i in userIncentives[r][g]) {
-                if(gaugeList.gauges[g] == undefined) {
+                if(listed[g.toLowerCase()] == undefined) {
                     console.log("\n\n!!!!!!!!!!!!!!\n\nUnknown gauge: " + g);
                     delete userIncentives[r][g][i];
+                    n++; // its raw result is skipped too, so the next deposits stay aligned
                     continue
                 }
                 userIncentives[r][g][i] = {
                     "index": userIncentives[r][g][i],
-                    "pool": gaugeList.gauges[g].shortName,
+                    "pool": listed[g.toLowerCase()].shortName,
                     "token": incentivesRaw[n].token,
                     "decimals": decimals[incentivesRaw[n].token],
                     "amount": incentivesRaw[n].amount.toString(),
                     "maxPerVote": incentivesRaw[n].maxPerVote.toString(),
                     "excluded": incentivesRaw[n].excluded
                 };
-                // if _round is earlier than current round, include additional data
-                if(r < round) {
+                if (info.unknownDecimals.has(incentivesRaw[n].token)) { userIncentives[r][g][i].decimalsUnknown = true; }
+                // if the round is earlier than the current one, include additional data
+                if(Number(r) < round[platform]) {
                     userIncentives[r][g][i].distributed = incentivesRaw[n].distributed.toString();
                     userIncentives[r][g][i].recycled = incentivesRaw[n].recycled.toString();
                     userIncentives[r][g][i].depositor = incentivesRaw[n].depositor.toString();
                 }
                 n++;
             }
+            // an unknown gauge's deposits leave holes, which would be stored as nulls
+            userIncentives[r][g] = userIncentives[r][g].filter((d) => d != null);
+            if (userIncentives[r][g].length == 0) { delete userIncentives[r][g]; }
         }
     }
     return userIncentives;
@@ -506,6 +446,7 @@ async function _getIncentivesByUser(network, user, platform=0) {
 
 // update gauges storage
 async function _getGauges(platform=0) {
+    var i;
     var pointer = gaugeKey(platform);
 
     Gauges[platform] = await storage.read(pointer);
@@ -516,8 +457,8 @@ async function _getGauges(platform=0) {
     if (Gauges[platform].lastUpdated > Math.floor(Date.now() / 1000)) { Gauges[platform].lastUpdated = 0; }
     if (Math.floor(Date.now() / 1000) - Gauges[platform].lastUpdated < 60 * 60 * 8) { return; }
 
-    // build Gauges[platform] object
-    Gauges[platform] = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
+    // build the new list on the side
+    var updated = { lastUpdated: Math.floor(Date.now() / 1000), gauges: {}};
 
     if(platform == 3) {
         // Yield Basis: gauges and legacy flags from its API, killed flags and token symbols from
@@ -550,7 +491,7 @@ async function _getGauges(platform=0) {
         for (var q = 0; q < list.data.length; q++) {
             if (ybResults[1 + 2 * q]) { continue; } // killed
             var ybGauge = ethers.getAddress(list.data[q].address);
-            Gauges[platform].gauges[ybGauge] = {
+            updated.gauges[ybGauge] = {
                 "shortName": ybResults[2 + 2 * q] + (legacy[ybGauge.toLowerCase()] ? " legacy" : "") + " (" + ybGauge.slice(0, 6) + "…)",
                 "active": true
             };
@@ -576,16 +517,22 @@ async function _getGauges(platform=0) {
                 } else {
                     gaugeAddress = ethers.getAddress(GaugesRaw[i].rootGauge);
                 }
-                Gauges[platform].gauges[gaugeAddress] = {
+                updated.gauges[gaugeAddress] = {
                     "shortName": GaugesRaw[i].shortName,
                     "active": (GaugesRaw[i].hasNoCrv == false && GaugesRaw[i].is_killed == false),
                 }
-                if(Gauges[platform].gauges[gaugeAddress].active == false) {
-                    delete Gauges[platform].gauges[gaugeAddress];
+                if(updated.gauges[gaugeAddress].active == false) {
+                    delete updated.gauges[gaugeAddress];
                 }
             }
-            if(Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] == undefined) {
-                Gauges[platform].gauges["0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60"] = {
+            // a reply with no live gauges isn't a gauge list: keep the old one
+            if (Object.keys(updated.gauges).length == 0) {
+                console.log("The Curve gauge API returned no gauges; keeping the stored list");
+                return;
+            }
+            var veFunder = ethers.getAddress("0xbaf05d7aa4129ca14ec45cc9d4103a9ab9a9ff60");
+            if(updated.gauges[veFunder] == undefined) {
+                updated.gauges[veFunder] = {
                     "shortName": "VeFunder-vyper",
                     "active": true
                 }
@@ -596,388 +543,17 @@ async function _getGauges(platform=0) {
                 var ic = ethers.getAddress(i);
                 gauge[ic] = {active:true, shortName:GaugesRaw[i].name};
             }
-            Gauges[platform] = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
+            if (Object.keys(gauge).length == 0) {
+                console.log("The f(x) gauge API returned no gauges; keeping the stored list");
+                return;
+            }
+            updated = {gauges: gauge, lastUpdated: Math.floor(Date.now() / 1000)};
         }
     }
+    // the new list replaces the old one only now: if an API failed above, the instance keeps the old list
+    Gauges[platform] = updated;
     // save gauges to storage
-    await storage.write(pointer, Gauges[platform]);
-}
-
-async function _l2round2proposal(_round) {
-    // initialize providers and contracts
-    await mProviders["zkevm"].init()
-    // map round to proposal
-    var proposalBase = _round - 48; // starting point to match with l2 deployment
-    var proposals;
-    var proposal = {};
-
-    // since proposals can be replaced with new merkle data, 
-    // we need to check for the newest proposal with the correct 
-    // start and end times to match the round
-
-    // get proposal count
-    var proposalCount = await l2platform.proposalCount();
-    if(proposalBase > proposalCount) return null; // return null if round is too high
-
-    // get proposal data from base proposal number to newest, to select the newest within the time range
-    calls["zkevm"] = [];
-    // don't go past proposal count
-    for(var i = proposalBase; i < proposalCount; i++) {
-        calls["zkevm"].push(ml2platform.proposals(i));
-    }
-    try {
-        proposals = await mProviders["zkevm"].all(calls["zkevm"]);
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get L2 proposals for " + _round);
-        return null;
-    }
-    // find newest proposal within time range
-    for(i in proposals) {
-        if(proposals[i].startTime >= roundEpoch(_round) && proposals[i].startTime <= roundEpoch(_round)+60*60*24) {
-            // overwrite proposal if newer proposal is within time range
-            proposal = {
-                "id": proposalBase+Number(i),
-                "baseWeightMerkleRoot": proposals[i].baseWeightMerkleRoot,
-                "startTime": Number(proposals[i].startTime),
-                "endTime": Number(proposals[i].endTime)
-            }
-        } else if(proposals[i].startTime > roundEpoch(_round)+60*60*24) {
-            // break if proposal is outside of time range
-            break;
-        }
-    }
-    if(proposal.id == undefined) return null; // return null if we failed to find a proposal within time range
-    return proposal;
-}
-
-async function _l2votesFull(_round) {
-    // initialize providers and contracts
-    await mProviders["zkevm"].init()
-    var proposal = await _l2round2proposal(_round);
-    if(proposal == null) return null; // return null if no proposal
-    var voters;
-    var votes = {};
-
-    // get voter count
-    var voterCount = await l2platform.getVoterCount(proposal.id);
-    if(voterCount == 0) return null; // return null if no voters
-    
-    // get list of voters
-    calls["zkevm"] = [];
-    for(var i = 0; i < voterCount; i++) {
-        calls["zkevm"].push(ml2platform.votedUsers(proposal.id, i));
-    }
-    try {
-        voters = await mProviders["zkevm"].all(calls["zkevm"]);
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get L2 voters for proposal " + proposal.id);
-        return null;
-    }
-
-    // get votes for each voter
-    calls["zkevm"] = [];
-    for(i in voters) {
-        calls["zkevm"].push(ml2platform.getVote(proposal.id, voters[i]));
-    }
-    try {
-        // map votes to voter based on call order
-        var votesRaw = await mProviders["zkevm"].all(calls["zkevm"]);
-        var n = 0; // map counter
-        for(i in voters) {
-            votes[voters[i]] = votesRaw[n];
-            n++;
-        }
-    } catch (e) {
-        console.log("Error: " + e);
-        console.log("Could not get L2 votes for proposal " + proposal.id);
-        return null;
-    }
-
-    // break down into gauge -> voter -> vlCVX
-    var voteData = {total:0,gauges:{}};
-    for(v in votes) { // v = voter address
-        // cycle through gauges included in vote
-        for(gi in votes[v].gauges) { // gi = gauge index
-            g = votes[v].gauges[gi]; // g = gauge address
-            // if we have no data for this gauge, initialize
-            if(voteData.gauges[g] == undefined) voteData.gauges[g] = {total:0, voters:{}};
-            // user weight deliniated by 10000 in contract
-            weight = Number(votes[v].weights[gi]);
-            // get user amount in vlCVX (baseWeight + adjustedWeight)
-            var userAmount = Number(ethers.formatUnits(votes[v].baseWeight, 18));
-            userAmount += Number(ethers.formatUnits(votes[v].adjustedWeight, 18));
-            // convert to amout for gauge weight assigned
-            var toGauge = userAmount * weight / 10000;
-            // add to total, gauge total, and assign to gauge voter amount
-            voteData.total += toGauge;
-            voteData.gauges[g].total += toGauge;
-            voteData.gauges[g].voters[v] = toGauge;
-        }
-    }
-    // save to storage
-    await storage.write("l2voteData", voteData, _round);
-    return voteData;
-}
-
-async function _getVlCVXAddresses(target_block, fullsync=false) {
-    
-    // 14320609 is deployment block
-    if(vlCVXAddresses.lastBlock == undefined) { vlCVXAddresses = {lastBlock:14320609, userBase:{}, userDelegation: {}, userAdjusted: {}}; }
-    // get all staked events in batches of 100000 blocks
-    var stakedEvents = [];
-    if(fullsync) { vlCVXAddresses.lastBlock = 14320609; vlCVXAddresses.userBase = {}; vlCVXAddresses.userDelegation = {}; vlCVXAddresses.userAdjusted = {}; }
-    var startBlock = vlCVXAddresses.lastBlock-1;
-    eventsAll = [];
-    while(startBlock < target_block){
-        endBlock = startBlock + 100000;
-        if(endBlock > target_block){
-            endBlock = target_block;
-        }
-        //console.log("getting lock events from " + startBlock + " to " + endBlock);
-        eventsAll.push(vlCVXLocker.queryFilter(vlCVXLocker.filters.Staked(),startBlock,endBlock));
-        startBlock = endBlock;
-    }
-    eventsAll = await Promise.all(eventsAll);
-    for(var i=0; i < eventsAll.length; i++){
-        stakedEvents = stakedEvents.concat(eventsAll[i]);
-    }
-    for(var i=0; i < stakedEvents.length; i++){
-        var user = ethers.getAddress(stakedEvents[i].args._user);
-        if(vlCVXAddresses.userBase[user] == undefined){
-            vlCVXAddresses.userBase[user] = 0;
-        }
-    }
-    //console.log("Total locker addresses: "+Object.keys(vlCVXAddresses.userBase).length);
-    vlCVXAddresses.lastBlock = target_block;
-
-    addressArray = Object.keys(vlCVXAddresses.userBase);
-    var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
-    let rm = 0;
-    await Promise.all([...Array(Number(groups)).keys()].map(async i => {
-        var start = i*querySize;
-        var finish = i*querySize + querySize - 1;
-        if(finish >= addressArray.length){
-            finish = addressArray.length - 1;
-        }
-        //console.log("Checking lockedBalanceOf from " + start + " to " +finish);
-        var calldata = [];
-        var addresses = [];
-        for(var c = start; c <= finish; c++){
-            calldata.push(vlCVXmLocker.lockedBalanceOf(addressArray[c]));
-            addresses.push(addressArray[c]);
-        }
-        //console.log(calldata);
-        let balData = await mProvider.all(calldata, target_block);
-        for(var d = 0; d < balData.length; d++){
-            // if(balData[d] == "0x")continue;
-            // console.log("baldata[d]: " +balData[d]);
-            var bal = BigInt(balData[d]);
-            if(bal.toString() == "0") {
-                delete vlCVXAddresses.userBase[ethers.getAddress(addresses[d])];
-                rm++;
-            }
-        }
-    }));
-    // write to storage
-    await storage.write("vlCVXAddresses", vlCVXAddresses);
-    return vlCVXAddresses;
-}
-
-async function _getLockedBalances(target_block) {
-    currentEpoch = Math.floor(Date.now()/1000/(86400*7))*86400*7; // cvx epoch is 7 days
-    latestIndex = await vlCVXLocker.epochCount();
-    latestIndex = Number(latestIndex)-1;
-    epochIndex = latestIndex;
-    _date = currentEpoch;
-    while(_date >= currentEpoch){
-        _date = await vlCVXLocker.epochs(epochIndex);
-        _date = Number(_date.date);
-        if(_date >= currentEpoch){
-            epochIndex--;
-        }
-    }
-    currentEpoch = latestIndex>epochIndex ? epochIndex+1 : epochIndex;
-    //console.log("current epoch: "+currentEpoch);
-
-    addressArray = Object.keys(vlCVXAddresses.userBase);
-    var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
-
-    totalVlCVX = 0;
-    await Promise.all([...Array(Number(groups)).keys()].map(async i => {
-        var start = i*querySize;
-        var finish = i*querySize + querySize - 1;
-        if(finish >= addressArray.length){
-            finish = addressArray.length - 1;
-        }
-        //console.log("get balances from " + start + " to " +finish);
-        var calldata = [];
-        var addresses = [];
-        for(var c = start; c <= finish; c++){
-            calldata.push(vlCVXmLocker.balanceAtEpochOf(currentEpoch, addressArray[c]));
-            addresses.push(addressArray[c]);
-        }
-        //console.log(calldata);
-        let balData = await mProvider.all(calldata, target_block);
-        for(var d = 0; d < balData.length; d++){
-            // if(balData[d] == "0x")continue;
-            // console.log("baldata[d]: " +balData[d]);
-            var bal = BigInt(balData[d]);
-            vlCVXAddresses.userBase[ethers.getAddress(addresses[d])] = bal.toString();
-            totalVlCVX += Number(ethers.formatUnits(bal,18));
-        }
-    }));
-
-    //console.log("Total vlCVX: "+totalVlCVX);
-    // write to storage
-    await storage.write("vlCVXAddresses", vlCVXAddresses);
-    //console.log("Balances cache updated");
-    return vlCVXAddresses.userBase;
-}
-
-async function _getDelegations(target_block) {
-    return false; // Make sure old contract isn't being used anywhere
-
-    addressArray = Object.keys(vlCVXAddresses.userBase);
-    var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
-    globalCheckList = [];
-    await Promise.all([...Array(Number(groups)).keys()].map(async i => {
-        var start = i*querySize;
-        var finish = i*querySize + querySize - 1;
-        if(finish >= addressArray.length){
-            finish = addressArray.length - 1;
-        }
-        //console.log("get cvx delegations from " + start + " to " +finish);
-        var calldata = [];
-        var addresses = [];
-        for(var c = start; c <= finish; c++){
-            calldata.push(delegationRegistry.delegation(addressArray[c], "0x6376782e65746800000000000000000000000000000000000000000000000000"));
-            addresses.push(addressArray[c]);
-        }
-        //console.log(calldata);
-        let delData = await mProvider.all(calldata, target_block);
-        for(var d = 0; d < delData.length; d++){
-            if(delData[d] == ethers.ZeroAddress) {
-                globalCheckList.push(addresses[d]);
-            } else {
-                vlCVXAddresses.userDelegation[ethers.getAddress(addresses[d])] = ethers.getAddress(delData[d]);
-            }
-        }
-    }));
-    addressArray = globalCheckList;
-    var groups = Math.floor(Number( (addressArray.length/querySize) + 1));
-    await Promise.all([...Array(Number(groups)).keys()].map(async i => {
-        var start = i*querySize;
-        var finish = i*querySize + querySize - 1;
-        if(finish >= addressArray.length){
-            finish = addressArray.length - 1;
-        }
-        //console.log("get global delegations from " + start + " to " +finish);
-        var calldata = [];
-        var addresses = [];
-        for(var c = start; c <= finish; c++){
-            calldata.push(delegationRegistry.delegation(addressArray[c], "0x0000000000000000000000000000000000000000000000000000000000000000"));
-            addresses.push(addressArray[c]);
-        }
-        //console.log(calldata);
-        let delData = await mProvider.all(calldata, target_block);
-        for(var d = 0; d < delData.length; d++){
-
-            var delegate = ethers.getAddress(delData[d]);
-            if(delegate != ethers.ZeroAddress) {
-                vlCVXAddresses.userDelegation[addresses[d]] = delegate;
-            } else {
-                vlCVXAddresses.userDelegation[addresses[d]] = addresses[d];
-            }
-        }
-    }));
-    // write to storage
-    await storage.write("vlCVXAddresses", vlCVXAddresses);
-    //console.log("Delegations cache updated");
-}
-
-async function _parseAddressDelegation () {
-    userAdjusted = {};
-    for(user in vlCVXAddresses.userBase) {
-        if(vlCVXAddresses.userDelegation[user] == undefined) {
-            vlCVXAddresses.userDelegation[user] = user;
-        }
-        if(user.toString().toLowerCase() == "undefined") {
-            console.error("undefined user" + user);
-        }
-        if(userAdjusted[user] == undefined) {
-            userAdjusted[user] = 0n;
-        }
-        if(userAdjusted[vlCVXAddresses.userDelegation[user]] == undefined) {
-            userAdjusted[vlCVXAddresses.userDelegation[user]] = 0n;
-        }
-        if(vlCVXAddresses.userDelegation[vlCVXAddresses.userDelegation[user]] == undefined) {
-            vlCVXAddresses.userDelegation[vlCVXAddresses.userDelegation[user]] = vlCVXAddresses.userDelegation[user];
-        }
-        if(vlCVXAddresses.userBase[vlCVXAddresses.userDelegation[user]] == undefined) {
-            vlCVXAddresses.userBase[vlCVXAddresses.userDelegation[user]] = 0;
-        }
-        if(vlCVXAddresses.userDelegation[user] != user) {
-            userAdjusted[vlCVXAddresses.userDelegation[user]] = userAdjusted[vlCVXAddresses.userDelegation[user]] + BigInt(vlCVXAddresses.userBase[user]);
-        }
-    }
-    totalDelegated = 0n;
-    for(user in userAdjusted) {
-        totalDelegated = totalDelegated + userAdjusted[user];
-        userAdjusted[user] = userAdjusted[user].toString();
-    }
-    //console.log("Total delegated: "+ethers.formatUnits(totalDelegated,18));
-    vlCVXAddresses.userAdjusted = userAdjusted;
-    // write to storage
-    await storage.write("vlCVXAddresses", vlCVXAddresses);
-    //console.log("Cleaned up cache");
-    return [vlCVXAddresses.userBase, vlCVXAddresses.userAdjusted, vlCVXAddresses.userDelegation];
-}
-
-async function _vlCVXTree(userBase, userAdjusted, userDelegation, target_block) {
-    var elements = [];
-    // sort userBase object by key
-    userBase = Object.keys(userBase).sort().reduce((r, k) => (r[k] = userBase[k], r), {});
-    userlist = Object.keys(userBase);
-    for(user in userBase){
-        // abi encode packed user, delegate, base amount, adjustment
-        //console.log("adding "+user+" to tree")
-        elements.push(ethers.solidityPackedKeccak256(["address","address","uint256","int256"],[user,userDelegation[user],BigInt(userBase[user]),BigInt(userAdjusted[user])]));
-    }
-
-    const merkleTree = new MerkleTree(elements, keccak256, { sortPairs: true })
-    const root = merkleTree.getRoot()
-
-    var compiledProofs = {root: "0x"+bufToHex(root),blockHeight:target_block,users:{}};
-    for(var i=0; i < elements.length; i++){
-        var proofbytes = merkleTree.getProof(elements[i]);
-        var proofHex = proofbytes.map(e => "0x"+e.data.toString('hex'));
-        var address = userlist[i];
-        var delegate = userDelegation[userlist[i]];
-        var baseamount = userBase[userlist[i]];
-        var adjustedamount = userAdjusted[userlist[i]];
-
-        if(!merkleTree.verify(proofbytes,elements[i],root)) {
-            //console.error("proof verification failed at index " + i);
-        }
-
-        if(compiledProofs.users[address] != undefined){
-            //console.error("address already exists");
-        }
-        
-        compiledProofs.users[address] = {};
-        compiledProofs.users[address]["leaf"] = elements[i].toString('hex');
-        compiledProofs.users[address]["proof"] = proofHex;
-        compiledProofs.users[address]["base_amount"] = baseamount;
-        compiledProofs.users[address]["adjusted_amount"] = adjustedamount;
-        compiledProofs.users[address]["delegate"] = delegate;
-
-    }
-    // write to storage
-    await storage.write("vlCVXMerkles", compiledProofs, round);
-    //console.log("Merkle tree written to file "+epochString+".json");
-    return compiledProofs;
+    await storage.write(pointer, updated);
 }
 
 // export functions
@@ -1011,11 +587,13 @@ const api = {
     },
     // get incentives for a given round, using an optional offset from the current round
     getIncentivesByOffset: async function (roundOffset = 0, platform=0) {
+        var roundd;
         roundd = this.round(platform);
         return await this.getIncentivesByRound(roundd + roundOffset, platform);
     },
     // get incentives for a given round
     getIncentivesByRound: async function (_round = 0, platform=0) {
+        var chain, j, k;
         noPrisma(platform);
         if(_round == 0) _round = this.round(platform);
         var incentives = {};
@@ -1047,17 +625,17 @@ const api = {
         await _getGauges(platform);
         return Gauges[platform];
     },
-    // update snapshot for a given round, using an optional delay from last call
-    // can pass your own voter address to be excluded, to assist in
-    // calculating a new vote for that address (while snapshot is active)
+    // update the vote tally for a round, if older than delay (see onchainVotes.js). Pass your own voter address
+    // for a what-if: the tally leaves that address's vote out, to help work out its next vote, and isn't saved.
     updateSnapshot: async function (_round = 0, delay = 0, platform=0, voter=null) {
         if(platform == 3) {
             return null;
         }
         noPrisma(platform);
         if(_round == 0) _round = this.round(platform);
-        // Curve (0) and f(x) (2) vote on-chain. Past rounds come from storage, including the
-        // Snapshot-era ones (Curve before round 128, f(x) before round 63).
+        // Curve (0) and f(x) (2) vote on-chain: the current proposal is re-tallied when its stored tally is
+        // older than delay, and a finished one is tallied once if nothing is stored for it. Stored rounds, and the
+        // Snapshot-era ones (Curve before round 128, f(x) before round 63), come from storage.
         var shot = await onchainVotes.updateVotes(delay, _round, platform, voter);
         return shot;
     },
@@ -1072,11 +650,6 @@ const api = {
         noPrisma(platform);
         if(_round == 0) _round = this.round(platform);
         return await _withheld(_round, platform, gauges);
-    },
-    // get l2 votes for a given round, in the same format as snapshot function
-    l2votes: async function (_round = 0, platform=0) {
-        if(_round == 0) _round = this.round(platform);
-        return await _l2votesFull(_round, platform);
     },
     // USD prices by token address: options.prices, else api/tokens from storage, else DefiLlama
     prices: async function (addresses) {
@@ -1099,12 +672,18 @@ const api = {
     },
     // get all incentive ids for a given user
     getIncentivesByUser: async function (user, platform=0) {
+        var i, r, g;
         noPrisma(platform);
         var promises = [];
         for (i in contracts[platform]) {
             promises.push(_getIncentivesByUser(i, user, platform));
         }
         var results = await Promise.all(promises);
+        // a read that failed would otherwise replace the stored record with nothing
+        if (results.some((x) => x == null)) {
+            console.log("Deposits for " + user + " not updated: a read failed");
+            return null;
+        }
         var incentives = {};
         var n = 0; // map counter
         for(i in contracts[platform]) {
@@ -1117,35 +696,30 @@ const api = {
             }
             n++;
         }
+        // the scan covers recent blocks only: stored deposits it didn't see (older ones) are kept, and the ones it
+        // did see are replaced by what it read
+        var stored = await storage.read(USER_DEPOSIT_KEYS[platform], user.toLowerCase());
+        for (r in stored || {}) {
+            for (i in stored[r] || {}) {
+                for (g in stored[r][i] || {}) {
+                    var seen = (incentives[r] && incentives[r][i] && incentives[r][i][g]) || [];
+                    var seenIndexes = new Set(seen.map((d) => String(d.index)));
+                    var older = Object.values(stored[r][i][g] || {}).filter((d) => d != null && !seenIndexes.has(String(d.index)));
+                    if (older.length == 0) { continue; }
+                    if (!incentives[r]) incentives[r] = {};
+                    if (!incentives[r][i]) incentives[r][i] = {};
+                    incentives[r][i][g] = seen.concat(older).sort((a, b) => Number(a.index) - Number(b.index));
+                }
+            }
+        }
         // save to storage
         await storage.write(USER_DEPOSIT_KEYS[platform], incentives, user.toLowerCase());
         
         return incentives;
     },
-    generateVlCVXMerkle: async function (fullsyncAddresses=false) {
-        return false; // Make sure old contract isn't being used anywhere
-        const newEpoch = Math.floor(Date.now()/1000/(86400*7))*86400*7; // cvx epoch is 7 days
-        target_block = await dater.getDate(newEpoch*1000, true, false);
-        target_block = target_block.block;
-        blocktime = await providers["mainnet"].getBlock(target_block);
-        while(blocktime.timestamp < newEpoch) {
-            target_block += 1;
-            blocktime = await providers["mainnet"].getBlock(target_block);
-        }
-
-        // check if console argument is "--sync"
-        if (fullsyncAddresses) {
-            vlCVXAddresses = await _getVlCVXAddresses(target_block, true);
-        } else {
-            vlCVXAddresses = await _getVlCVXAddresses(target_block)
-        }
-        await _getLockedBalances(target_block);
-        await _getDelegations(target_block);
-        [userBase, userAdjusted, userDelegation] = await _parseAddressDelegation();
-        tree = await _vlCVXTree(userBase, userAdjusted, userDelegation, target_block);
-    },
     // combine several functions to return a full round object
     roundObject : async function (_round = 0, platform=0) {
+        var shot, Gauge, prices, chain, gauge, g, i;
         if(platform == 3) { 
             return null;
         }
@@ -1163,7 +737,7 @@ const api = {
         // earning votes: opted-out weight comes out of each gauge's total
         var withheld = await _withheld(_round, platform, Object.keys(shot));
 
-        Gauge = Gauges[platform].gauges;
+        Gauge = (Gauges[platform] && Gauges[platform].gauges) || {};
         
         // get prices for every token deposited this round
         var priceTokens = new Set();
@@ -1186,9 +760,11 @@ const api = {
         var possibleGaugeUSD = {}; // USD available for each gauge, assuming 25m vlCVX voted for gauges with maxPerVote
 
         var displayObject = {};
+        var unpriced = new Set(); // tokens without a USD price, counted at $0
         // cycle through different supported networks
         for (chain in incentives) {
             var totalVotes = 0; // total votes for all gauges
+            var totalEarning = 0; // their earning votes
             var pervls = [];
             displayObject[chain] = {gauges: {}};
             // cycle through different gauges
@@ -1208,15 +784,24 @@ const api = {
                 }
                 
                 var earning = Math.max(0, vote.total - (withheld[gauge] || 0));
-                displayObject[chain].gauges[Gauge[gauge].shortName] = {};
-                displayObject[chain].gauges[Gauge[gauge].shortName].votes = vote.total;
-                displayObject[chain].gauges[Gauge[gauge].shortName].earningVotes = earning;
-                displayObject[chain].gauges[Gauge[gauge].shortName].rewards = [];
+                // a gauge with votes may be missing from the list (killed gauges are left out of it)
+                var name = Gauge[gauge] ? Gauge[gauge].shortName : "Unknown (" + gauge + ")";
+                // voters by lowercase address, for deposits' excluded lists (Snapshot-era shots used checksummed keys)
+                var votesLower = {};
+                for (var voterKey in (vote.votes || {})) { votesLower[voterKey.toLowerCase()] = vote.votes[voterKey]; }
+                displayObject[chain].gauges[name] = {};
+                displayObject[chain].gauges[name].votes = vote.total;
+                displayObject[chain].gauges[name].earningVotes = earning;
+                displayObject[chain].gauges[name].rewards = [];
                 totalVotes += vote.total;
+                totalEarning += earning;
                 //console.log("   Votes for gauge: " + vote.total);
                 //console.log("   Rewards for gauge:");
                 for (i in incentives[chain][gauge]) {
-                    var incentive = incentives[chain][gauge][i]; // for code readability
+                    // a copy: the deposit getIncentivesByRound returned (and stored) keeps its raw amounts
+                    var incentive = Object.assign({}, incentives[chain][gauge][i]);
+                    var price = Number(prices[incentive.token]);
+                    if (prices[incentive.token] == null || isNaN(price)) { unpriced.add(incentive.token); price = 0; }
                     var possibleAmount = 0; // amount of incentive available if 25m vlCVX voted for gauges with maxPerVote
                     var rawAmount = BigInt(incentive.amount);
                     var rawMaxPerVote = BigInt(incentive.maxPerVote);
@@ -1224,29 +809,38 @@ const api = {
                     incentive.amount = ethers.formatUnits(incentive.amount, incentive.decimals);
                     incentive.maxPerVote = ethers.formatUnits(incentive.maxPerVote, incentive.decimals);
 
+                    // a deposit's excluded voters earn nothing from it (rounds 104-105 had such deposits;
+                    // reconcile no longer accepts them), so they come out of its earning votes
+                    var depositEarning = earning;
+                    if (Array.isArray(incentive.excluded) && incentive.excluded.length > 0) {
+                        var excludedVotes = 0;
+                        for (var x of incentive.excluded) { excludedVotes += votesLower[String(x).toLowerCase()] || 0; }
+                        depositEarning = Math.max(0, earning - excludedVotes);
+                    }
+
                     // check if entire incentive is consumed, or if there is a maxPerVote
                     if (incentive.maxPerVote != 0) {
                         // a capped deposit pays at most maxPerVote per earning vote (total rounded
                         // up, as reconcile submits it); the rest rolls over to the next round
-                        var cap = rawMaxPerVote * BigInt(Math.ceil(earning));
+                        var cap = rawMaxPerVote * BigInt(Math.ceil(depositEarning));
                         incentive.consumedAmount = ethers.formatUnits(cap < rawAmount ? cap : rawAmount, incentive.decimals);
                         // possible total USD available is based on 25m vlCVX voting for gauges with maxPerVote
                         // check if maxPerVote*25m is greater than total amount
                         possibleAmount = incentive.maxPerVote * 25000000 > incentive.amount ? incentive.amount : incentive.maxPerVote * 25000000;
                         // increase possible totals
-                        possibleGaugeUSD[gauge] += possibleAmount * prices[incentive.token]; 
-                        possibleTotalUSD += possibleAmount * prices[incentive.token];
+                        possibleGaugeUSD[gauge] += possibleAmount * price; 
+                        possibleTotalUSD += possibleAmount * price;
                     } else {
                         // if there is no maxPerVote, entire reward is consumed, unless nobody earns
                         // there: endRound pays nothing on a gauge with no earning votes
-                        incentive.consumedAmount = earning > 0 ? incentive.amount : "0.0";
+                        incentive.consumedAmount = depositEarning > 0 ? incentive.amount : "0.0";
                         possibleAmount = incentive.amount; // readablity
                         // increase possible totals
-                        possibleGaugeUSD[gauge] += incentive.amount * prices[incentive.token];
-                        possibleTotalUSD += incentive.amount * prices[incentive.token];
+                        possibleGaugeUSD[gauge] += incentive.amount * price;
+                        possibleTotalUSD += incentive.amount * price;
                     }
-                    var total = incentive.amount * prices[incentive.token]; // readablity
-                    var consumed = incentive.consumedAmount * prices[incentive.token];
+                    var total = incentive.amount * price; // readablity
+                    var consumed = incentive.consumedAmount * price;
                     
                     // increase totals
                     gaugeConsumedUSD[gauge] += consumed;
@@ -1254,14 +848,14 @@ const api = {
                     totalConsumedUSD += consumed;
                     totalUSD += total;
 
-                    displayObject[chain].gauges[Gauge[gauge].shortName].rewards.push({
+                    displayObject[chain].gauges[name].rewards.push({
                         symbol: incentive.symbol,
                         consumedAmount: incentive.consumedAmount,
                         amount: incentive.amount,
                         maxPerVote: incentive.maxPerVote,
                         totalUSD: total,
                         consumedUSD: consumed,
-                        possibleTotalUSD: possibleAmount * prices[incentive.token],
+                        possibleTotalUSD: possibleAmount * price,
                     });
                 }
                 var per;
@@ -1271,7 +865,7 @@ const api = {
                     per = gaugeConsumedUSD[gauge] / earning;
                     pervls.push(per);
                 }
-                displayObject[chain].gauges[Gauge[gauge].shortName].totals = {
+                displayObject[chain].gauges[name].totals = {
                     consumedUSD: gaugeConsumedUSD[gauge],
                     totalUSD: gaugeUSD[gauge],
                     possibleTotalUSD: possibleGaugeUSD[gauge],
@@ -1288,9 +882,13 @@ const api = {
                 consumedUSD: totalConsumedUSD,
                 totalUSD: totalUSD,
                 possibleTotalUSD: possibleTotalUSD,
-                perVlCVX: totalConsumedUSD / totalVotes,
+                earningVotes: totalEarning,
+                perVlCVX: totalEarning > 0 ? totalConsumedUSD / totalEarning : 0,
                 perVlCVXMedian: pervls.sort((a, b) => a - b)[Math.floor(pervls.length/2)]
             }
+        }
+        if (unpriced.size > 0) {
+            console.log(unpriced.size + " token(s) without a USD price, counted as $0: " + [...unpriced].join(", "));
         }
         return displayObject;
     }

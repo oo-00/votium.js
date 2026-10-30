@@ -8,22 +8,21 @@
     "onchainVotes.js",
     "optOuts.js",
     "multicall.js",
+    "rounds.js",
     "snap.js",
     "deployments.json",
     "abis/",
     "storage/local.js",
-    "storage/firebase.js"
+    "storage/firebase.js",
+    "data/"
   ],
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "cvxonchain": "github:oo-00/cvxOnchain#v1.0.0",
-    "ethereum-block-by-date": "^1.4.9",
     "ethers": "^6.17.0",
     "graphql-request": "^6.1.0",
-    "keccak256": "^1.0.6",
-    "merkletreejs": "^0.3.10",
     "node-fetch": "2.6"
   },
   "license": "MIT",

@@ -12,7 +12,7 @@ If you do not pass this parameter, it will default to 0
 
 const votium = require('../votium.js')({
     providers: { mainnet: process.env.RPC_URL },
-    storage: require('../storage/local.js')(__dirname + '/../storage'),
+    storage: require('../storage/local.js')(__dirname + '/storage'), // built as the examples run (git ignores it)
 });
 const ethers = require('ethers');
 
@@ -58,31 +58,20 @@ async function examples() {
     console.log(shot);
     */
     
-    // get prices from coingecko
-    prices = {};
-    priceString = '';
-    for (chain in incentivesCRVFRAX) {
-        for (g in incentivesCRVFRAX[chain]) {
-            for (i in incentivesCRVFRAX[chain][g]) {
-                if (prices[incentivesCRVFRAX[chain][g][i].token] == undefined) {
-                    prices[incentivesCRVFRAX[chain][g][i].token] = 0;
-                    priceString += ',' + incentivesCRVFRAX[chain][g][i].token;
+    // USD prices for every deposited token: api/tokens in storage if there, else DefiLlama (CoinGecko's keyless
+    // by-address endpoint takes one address at a time)
+    var tokens = new Set();
+    for (var incentivesOf of [incentivesCRVFRAX, incentivesFXN]) {
+        for (chain in incentivesOf) {
+            for (g in incentivesOf[chain]) {
+                for (i in incentivesOf[chain][g]) {
+                    tokens.add(incentivesOf[chain][g][i].token);
                 }
             }
         }
     }
-    for (chain in incentivesFXN) {
-        for (g in incentivesFXN[chain]) {
-            for (i in incentivesFXN[chain][g]) {
-                if (prices[incentivesFXN[chain][g][i].token] == undefined) {
-                    prices[incentivesFXN[chain][g][i].token] = 0;
-                    priceString += ',' + incentivesFXN[chain][g][i].token;
-                }
-            }
-        }
-    }
-    prices = await votium.coingecko(priceString.substring(1));
-    console.log("Prices as reported by coingecko")
+    prices = await votium.prices([...tokens]);
+    console.log("Prices");
     console.log(prices);
 
     // The above are individual functions, but you can get a complete object for a round

@@ -132,3 +132,6 @@ dist
 node_modules/
 package-lock.json
 .storageConfig.js
+
+# what the examples cache as they run
+examples/storage/
