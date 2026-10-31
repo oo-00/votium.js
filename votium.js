@@ -331,52 +331,60 @@ async function _getIncentives(network, _round, platform=0) {
     return incentives;
 }
 
-// get incentives for a specified network and depositor
-async function _getIncentivesByUser(network, user, platform=0) {
-    var i, r, g, n, endBlock, userIncentives, roundd, gauge, id, incentivesRaw, info, decimals;
+// NewIncentive logs of a deposit contract from fromBlock to toBlock (both inclusive), of one depositor or (null)
+// all of them, in non-overlapping windows of logBlocksLimit blocks: RPCs cap a log query's block range (Infura:
+// 10,000). v1's [start, start + 100000] windows, which also reused endBlock as the next start, were rejected.
+async function _newIncentiveLogs(network, platform, fromBlock, toBlock, depositor = null) {
+    var windows = [];
+    for (var start = fromBlock; start <= toBlock; start += config.logBlocksLimit) {
+        windows.push([start, Math.min(start + config.logBlocksLimit - 1, toBlock)]);
+    }
+    // a few windows at a time: some RPCs reject large batches or bursts of log queries
+    var depositContract = contracts[platform][network];
+    var filter = depositContract.filters.NewIncentive(null, null, null, null, null, null, null, depositor);
+    var events = [];
+    for (var w = 0; w < windows.length; w += 4) {
+        var batch = await Promise.all(windows.slice(w, w + 4).map(([from, to]) => depositContract.queryFilter(filter, from, to)));
+        for (var b of batch) { events = events.concat(b); }
+    }
+    return events;
+}
+
+// add NewIncentive logs to a { round: { gauge: [incentive indexes] } } map
+function _addIncentiveIds(into, events) {
+    for (var e of events) {
+        var r = e.args._round.toString();
+        var g = e.args._gauge;
+        var id = e.args._index.toString();
+        if (into[r] == undefined) into[r] = {};
+        if (into[r][g] == undefined) into[r][g] = [];
+        if (!into[r][g].includes(id)) into[r][g].push(id);
+    }
+    return into;
+}
+
+// get incentives for a specified network and depositor: the ones in found ({ round: { gauge: [indexes] } }), or
+// else the ones the depositor made in the last 200,000 blocks
+async function _getIncentivesByUser(network, user, platform=0, found=null) {
+    var i, r, g, n, userIncentives, incentivesRaw, info, decimals;
     // initialize providers and contracts
     await mProviders[network].init()
     var gaugeList = await _loadGauges(platform);
 
     if (!contracts[platform][network]) return null;
-    
 
-    var currentBlock = await providers[network].getBlockNumber();
-    // the last 200,000 blocks (about 28 days): deposits from before that are kept from the stored record
-    // (see getIncentivesByUser), so each refresh only reads the recent ones
-    var startBlock = currentBlock-200000;
-
-    // get all incentives where _depositor == user, in non-overlapping windows of logBlocksLimit blocks (from and to
-    // both inclusive): RPCs cap a log query's block range (Infura: 10,000). v1's [start, start + 100000] windows,
-    // which also reused endBlock as the next start, were rejected.
-    var windows = [];
-    while(startBlock <= currentBlock){
-        endBlock = startBlock + config.logBlocksLimit - 1;
-        if(endBlock > currentBlock){
-            endBlock = currentBlock;
+    if (found) {
+        // a copy: the indexes are replaced by the deposits below
+        userIncentives = {};
+        for (r in found) {
+            userIncentives[r] = {};
+            for (g in found[r]) { userIncentives[r][g] = [...found[r][g]]; }
         }
-        windows.push([startBlock, endBlock]);
-        startBlock = endBlock + 1;
-    }
-    // a few windows at a time: some RPCs reject large batches or bursts of log queries
-    var depositContract = contracts[platform][network];
-    var eventsAll = [];
-    for (var w = 0; w < windows.length; w += 4) {
-        eventsAll = eventsAll.concat(await Promise.all(windows.slice(w, w + 4).map(([from, to]) =>
-            depositContract.queryFilter(depositContract.filters.NewIncentive(null, null, null, null, null, null, null, user), from, to))));
-    }
-    var events = [];
-    for(var i=0; i < eventsAll.length; i++){
-        events = events.concat(eventsAll[i]);
-    }
-    userIncentives = {};
-    for(i in events) {
-        roundd = events[i].args._round.toString();
-        gauge = events[i].args._gauge;
-        id = events[i].args._index.toString();
-        if(userIncentives[roundd] == undefined) userIncentives[roundd] = {};
-        if(userIncentives[roundd][gauge] == undefined) userIncentives[roundd][gauge] = [];
-        userIncentives[roundd][gauge].push(id);
+    } else {
+        var currentBlock = await providers[network].getBlockNumber();
+        // the last 200,000 blocks (about 28 days): deposits from before that are kept from the stored record
+        // (see getIncentivesByUser), so each refresh only reads the recent ones
+        userIncentives = _addIncentiveIds({}, await _newIncentiveLogs(network, platform, currentBlock - 200000, currentBlock, user));
     }
 
 
@@ -670,13 +678,31 @@ const api = {
         }
         return formatted;
     },
-    // get all incentive ids for a given user
-    getIncentivesByUser: async function (user, platform=0) {
+    // NewIncentive logs from fromBlock to toBlock (both inclusive), by depositor:
+    // { depositor: { network: { round: { gauge: [indexes] } } } }. Pass a depositor's entry to getIncentivesByUser
+    // to store those deposits whenever they were made.
+    newIncentivesByDepositor: async function (fromBlock, toBlock, platform=0) {
+        noPrisma(platform);
+        var byDepositor = {};
+        for (var network in contracts[platform]) {
+            var events = await _newIncentiveLogs(network, platform, fromBlock, toBlock);
+            for (var e of events) {
+                var d = e.args._depositor;
+                if (byDepositor[d] == undefined) byDepositor[d] = {};
+                if (byDepositor[d][network] == undefined) byDepositor[d][network] = {};
+                _addIncentiveIds(byDepositor[d][network], [e]);
+            }
+        }
+        return byDepositor;
+    },
+    // a depositor's deposits, merged into the stored record: the ones in found ({ network: { round: { gauge:
+    // [indexes] } } }, from newIncentivesByDepositor), or else the ones made in the last 200,000 blocks
+    getIncentivesByUser: async function (user, platform=0, found=null) {
         var i, r, g;
         noPrisma(platform);
         var promises = [];
         for (i in contracts[platform]) {
-            promises.push(_getIncentivesByUser(i, user, platform));
+            promises.push(_getIncentivesByUser(i, user, platform, found ? (found[i] || {}) : null));
         }
         var results = await Promise.all(promises);
         // a read that failed would otherwise replace the stored record with nothing
@@ -696,8 +722,8 @@ const api = {
             }
             n++;
         }
-        // the scan covers recent blocks only: stored deposits it didn't see (older ones) are kept, and the ones it
-        // did see are replaced by what it read
+        // only some deposits were read (recent ones, or the found ones): stored deposits that weren't are kept, and
+        // the ones that were are replaced by what was read
         var stored = await storage.read(USER_DEPOSIT_KEYS[platform], user.toLowerCase());
         for (r in stored || {}) {
             for (i in stored[r] || {}) {

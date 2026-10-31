@@ -29,7 +29,7 @@ Nothing is read and no RPC is made until you call a function. Options:
 | `providers` | `{ mainnet: RPC URL }`, required. Votium's deposit contracts are all on mainnet |
 | `storage` | where data is cached: `storage/local.js` (a folder), `storage/firebase.js` (a Realtime Database, with a path prefix and key map), or any `{ read(key, suffix), write(key, value, suffix) }` |
 | `cvx` | a cvxonchain instance, if you already have one (otherwise one is built from `providers.mainnet`) |
-| `logBlocksLimit` | max blocks per log query (default 10000, Infura's limit), used when reading a depositor's deposits |
+| `logBlocksLimit` | max blocks per log query (default 10000, Infura's limit), used when reading deposit logs |
 | `prices` | `async (addresses) => ({ [address]: usd })` for `roundObject`'s USD figures. Without it, prices come from the `api/tokens` list in storage (the one Votium's price job writes, and the site and the reconcile read). DefiLlama's keyless API fills in when the list is missing or lacks a token |
 
 Keys and credentials stay with you: pass RPC URLs and an initialized database. The package
@@ -70,6 +70,26 @@ contains none.
   earning votes consumes nothing, and its deposits roll over too. A deposit's excluded voters
   (rounds 104 and 105 had such deposits; reconcile no longer accepts them) come out of that
   deposit's earning votes.
+
+## Depositors' deposits
+
+`getIncentivesByUser(user, platform)` reads a depositor's deposits from the last 200,000 blocks (about 28
+days), merges them into the stored record (`userDeposits`, `fxUserDeposits`, `ybUserDeposits`) and stores it.
+Deposits older than that are kept from the stored record, but never added.
+
+To keep every depositor's record complete, follow the deposit logs instead (2.1.0):
+
+```js
+const found = await votium.newIncentivesByDepositor(fromBlock, toBlock, platform);
+for (const depositor in found) {
+    await votium.getIncentivesByUser(depositor, platform, found[depositor]);
+}
+// next time, start from toBlock + 1
+```
+
+`newIncentivesByDepositor` reads `NewIncentive` logs over the range, both ends included, in `logBlocksLimit`
+windows. Given `found`, `getIncentivesByUser` reads exactly those deposits however old they are, and scans
+nothing. It returns `null`, and stores nothing, if a read fails.
 
 ## Examples
 
