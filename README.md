@@ -101,6 +101,13 @@ A deposit on a gauge the gauge list no longer has (killed or delisted) is kept i
 as `Unknown (0x1234...)`, as rounds name it (2.2.0; earlier versions left it out), since the depositor may
 still be able to withdraw it.
 
+## Token list
+
+`data/tokens.json` (`require('votium.js/data/tokens.json')`) lists the tokens Votium takes deposits in,
+or took and still pays out in: each one's address (`value`), CoinGecko id (`label`), `symbol` and
+`decimals`. It's generated from Votium's token registry. The library doesn't read it: it takes decimals
+and symbols from the chain.
+
 ## Examples
 
 `examples/roundTable.js` (Curve) and `examples/roundTableFXN.js` print a round as a table;
@@ -122,7 +129,8 @@ still be able to withdraw it.
 - Built on ethers 6. `multicall.js` (ethers-multicall's call builders on Multicall3) replaces
   ethers-multicall and @pelith/ethers-multicall, which only work with ethers 5.
 - L2 support is removed: the zkEVM vote platform (`l2votes()`, the `l2votePlatform` option) and
-  the `zkevm`, `optimism` and `arbitrum` providers. Convex kept vlCVX voting on mainnet, and
-  Votium's deposit contracts were never deployed on an L2. Data is still keyed by `mainnet`.
+  the `zkevm`, `optimism` and `arbitrum` providers. Convex's L2 vote platform was an abandoned plan:
+  gauge votes moved from Snapshot to on-chain voting on mainnet. Votium's deposit contracts were never
+  deployed on an L2. Data is still keyed by `mainnet`.
 - The repository no longer carries a `storage/` data snapshot: a local store starts empty and
   fills as you call functions. Only round 95's vote capture ships, in `data/`.

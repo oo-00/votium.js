@@ -1,6 +1,6 @@
 {
   "name": "votium.js",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Votium deposits, rounds, gauges and vote tallies for vlCVX (Curve, f(x)) and veYB",
   "main": "votium.js",
   "files": [
