@@ -39,6 +39,9 @@ const createOptOuts = require('./optOuts.js');
 // round start times, and the Convex proposal a round is voted on
 const { roundEpoch, roundProposal } = require('./rounds.js');
 
+// what deposits pay under the maxPerVote rules (the stacked rule from Curve 135, f(x) 70)
+const caps = require('./caps.js');
+
 
 // Platform slots: 0 Curve, 2 f(x), 3 YB. Slot 1 was Prisma, now removed; the numbers stay
 // fixed so stored data and indexes keep their meaning.
@@ -563,6 +566,9 @@ const api = {
     // the opt-out registry reads (deployEpoch, optOutCounts, optedOutUsers, withheldWeight,
     // withheldByGauge), by cvxonchain platform name ("Curve", "Fx") and proposal epoch
     optOuts: optOuts,
+    // what a gauge's deposits pay voters (paidOut), and from which round capped deposits stack per token
+    // (STACKED_FROM, stackedRound); also require('votium.js/caps.js')
+    caps: caps,
     round: function (platform=0) {
         return round[platform]; // current round
     },
@@ -841,48 +847,36 @@ const api = {
                 totalEarning += earning;
                 //console.log("   Votes for gauge: " + vote.total);
                 //console.log("   Rewards for gauge:");
-                for (i in incentives[chain][gauge]) {
+                // what each deposit pays voters at the gauge's earning votes (rounded up, as reconcile submits
+                // them), and would pay if 25m vlCVX earned there, by the round's maxPerVote rule (caps.js): from
+                // Curve round 135 and f(x) round 70, capped deposits stack per token; before, each paid
+                // min(amount, maxPerVote × votes). The rest rolls over to the next round, or is refunded to the
+                // depositor when the contract released it but voters aren't paid.
+                var deposits = incentives[chain][gauge];
+                var stacked = caps.stackedRound(_round, platform);
+                var paid = caps.paidOut(deposits, Math.ceil(earning), stacked);
+                var possible = caps.paidOut(deposits, 25000000, stacked);
+                for (i in deposits) {
                     // a copy: the deposit getIncentivesByRound returned (and stored) keeps its raw amounts
-                    var incentive = Object.assign({}, incentives[chain][gauge][i]);
+                    var incentive = Object.assign({}, deposits[i]);
                     var price = Number(prices[incentive.token]);
                     if (prices[incentive.token] == null || isNaN(price)) { unpriced.add(incentive.token); price = 0; }
-                    var possibleAmount = 0; // amount of incentive available if 25m vlCVX voted for gauges with maxPerVote
-                    var rawAmount = BigInt(incentive.amount);
-                    var rawMaxPerVote = BigInt(incentive.maxPerVote);
-                    // convert amounts to human readable format
-                    incentive.amount = ethers.formatUnits(incentive.amount, incentive.decimals);
-                    incentive.maxPerVote = ethers.formatUnits(incentive.maxPerVote, incentive.decimals);
-
-                    // a deposit's excluded voters earn nothing from it (rounds 104-105 had such deposits;
-                    // reconcile no longer accepts them), so they come out of its earning votes
-                    var depositEarning = earning;
-                    if (Array.isArray(incentive.excluded) && incentive.excluded.length > 0) {
+                    var paidRaw = paid[i];
+                    // a deposit's excluded voters earned nothing from it (rounds 104-105 had such deposits; reconcile
+                    // no longer accepts them, and every deposit contract's maxExclusions is 0), so they come out of
+                    // its earning votes
+                    if (!stacked && Array.isArray(incentive.excluded) && incentive.excluded.length > 0) {
                         var excludedVotes = 0;
                         for (var x of incentive.excluded) { excludedVotes += votesLower[String(x).toLowerCase()] || 0; }
-                        depositEarning = Math.max(0, earning - excludedVotes);
+                        paidRaw = caps.paidOut([deposits[i]], Math.ceil(Math.max(0, earning - excludedVotes)), false)[0];
                     }
-
-                    // check if entire incentive is consumed, or if there is a maxPerVote
-                    if (incentive.maxPerVote != 0) {
-                        // a capped deposit pays at most maxPerVote per earning vote (total rounded
-                        // up, as reconcile submits it); the rest rolls over to the next round
-                        var cap = rawMaxPerVote * BigInt(Math.ceil(depositEarning));
-                        incentive.consumedAmount = ethers.formatUnits(cap < rawAmount ? cap : rawAmount, incentive.decimals);
-                        // possible total USD available is based on 25m vlCVX voting for gauges with maxPerVote
-                        // check if maxPerVote*25m is greater than total amount
-                        possibleAmount = incentive.maxPerVote * 25000000 > incentive.amount ? incentive.amount : incentive.maxPerVote * 25000000;
-                        // increase possible totals
-                        possibleGaugeUSD[gauge] += possibleAmount * price; 
-                        possibleTotalUSD += possibleAmount * price;
-                    } else {
-                        // if there is no maxPerVote, entire reward is consumed, unless nobody earns
-                        // there: endRound pays nothing on a gauge with no earning votes
-                        incentive.consumedAmount = depositEarning > 0 ? incentive.amount : "0.0";
-                        possibleAmount = incentive.amount; // readablity
-                        // increase possible totals
-                        possibleGaugeUSD[gauge] += incentive.amount * price;
-                        possibleTotalUSD += incentive.amount * price;
-                    }
+                    // convert amounts to human readable format
+                    incentive.consumedAmount = ethers.formatUnits(paidRaw, incentive.decimals);
+                    var possibleAmount = ethers.formatUnits(possible[i], incentive.decimals);
+                    incentive.amount = ethers.formatUnits(incentive.amount, incentive.decimals);
+                    incentive.maxPerVote = ethers.formatUnits(incentive.maxPerVote, incentive.decimals);
+                    possibleGaugeUSD[gauge] += possibleAmount * price;
+                    possibleTotalUSD += possibleAmount * price;
                     var total = incentive.amount * price; // readablity
                     var consumed = incentive.consumedAmount * price;
                     

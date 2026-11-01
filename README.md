@@ -6,7 +6,7 @@ f(x)) and veYB. Built on [cvxOnchain](https://github.com/oo-00/cvxOnchain) for o
 ## Install
 
 ```json
-"dependencies": { "votium.js": "github:oo-00/votium.js#v2.0.0" }
+"dependencies": { "votium.js": "github:oo-00/votium.js#v2.3.0" }
 ```
 
 ## Use
@@ -64,12 +64,26 @@ contains none.
   `optedOutUsers` (paged, checked against the count), `withheldWeight` and `withheldByGauge`,
   by platform name (`"Curve"`, `"Fx"`) and proposal epoch. These are Votium's contracts, so
   they live here; cvxOnchain stays Convex-only.
-- `roundObject(round, platform)` reports `earningVotes` per gauge (votes minus withheld weight).
-  It pays a capped deposit `min(amount, maxPerVote × ceil(earning votes))`, as the
-  contract and the reconcile do. The rest rolls over to the next round. A gauge with no
-  earning votes consumes nothing, and its deposits roll over too. A deposit's excluded voters
-  (rounds 104 and 105 had such deposits; reconcile no longer accepts them) come out of that
-  deposit's earning votes.
+- `roundObject(round, platform)` reports `earningVotes` per gauge (votes minus withheld weight), and
+  each deposit's `consumedAmount`: what it pays voters at the gauge's earning votes, rounded up as
+  reconcile submits them (2.3.0):
+  - An uncapped deposit pays in full.
+  - From Curve round 135 and f(x) round 70, capped deposits stack per token, as reconcile pays them.
+    A capped deposit isn't used until the gauge's other rewards in its token are diluted below its
+    cap, then holds that token's rate per vote at its cap until it runs out. With several caps in a
+    token, the highest goes first (equal caps in deposit order). Deposits in other tokens don't count.
+    The contract releases `min(amount, maxPerVote × votes)` of a capped deposit and rolls the rest
+    over to the next round. What it releases but voters aren't paid is refunded to the depositor.
+  - Before those rounds, each capped deposit paid `min(amount, maxPerVote × votes)` on its own (2.2.1
+    and earlier pay every round this way).
+  - A gauge with no earning votes consumes nothing, and its deposits roll over too.
+  - A deposit's excluded voters (rounds 104 and 105 had such deposits; reconcile no longer accepts
+    them) come out of that deposit's earning votes.
+- `caps.js` (`require('votium.js/caps.js')`, or `votium.caps`) is that rule on its own:
+  `paidOut(deposits, votes, stacked)` takes a gauge's deposits (`{ index, token, amount, maxPerVote }`,
+  in base units) and whole earning votes, and returns what each pays as BigInts.
+  `stackedRound(round, platform)` says whether a round uses the stacked rule (`STACKED_FROM`: Curve
+  135, f(x) 70, YB 54).
 
 ## Depositors' deposits
 

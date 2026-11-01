@@ -1,6 +1,6 @@
 {
   "name": "votium.js",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Votium deposits, rounds, gauges and vote tallies for vlCVX (Curve, f(x)) and veYB",
   "main": "votium.js",
   "files": [
@@ -9,6 +9,7 @@
     "optOuts.js",
     "multicall.js",
     "rounds.js",
+    "caps.js",
     "snap.js",
     "deployments.json",
     "abis/",
