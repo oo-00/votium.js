@@ -419,16 +419,13 @@ async function _getIncentivesByUser(network, user, platform=0, found=null) {
     // building in the same way as we built the calls for incentivesRaw
     for(r in userIncentives) {
         for(g in userIncentives[r]) {
+            // a gauge missing from the list (killed or delisted since) keeps its deposits, named as _getIncentives
+            // names it: the depositor may still be able to withdraw them
+            var entry = listed[g.toLowerCase()];
             for(i in userIncentives[r][g]) {
-                if(listed[g.toLowerCase()] == undefined) {
-                    console.log("\n\n!!!!!!!!!!!!!!\n\nUnknown gauge: " + g);
-                    delete userIncentives[r][g][i];
-                    n++; // its raw result is skipped too, so the next deposits stay aligned
-                    continue
-                }
                 userIncentives[r][g][i] = {
                     "index": userIncentives[r][g][i],
-                    "pool": listed[g.toLowerCase()].shortName,
+                    "pool": entry ? entry.shortName : "Unknown (" + g.substr(0,6) + "...)",
                     "token": incentivesRaw[n].token,
                     "decimals": decimals[incentivesRaw[n].token],
                     "amount": incentivesRaw[n].amount.toString(),
@@ -444,9 +441,6 @@ async function _getIncentivesByUser(network, user, platform=0, found=null) {
                 }
                 n++;
             }
-            // an unknown gauge's deposits leave holes, which would be stored as nulls
-            userIncentives[r][g] = userIncentives[r][g].filter((d) => d != null);
-            if (userIncentives[r][g].length == 0) { delete userIncentives[r][g]; }
         }
     }
     return userIncentives;
@@ -695,8 +689,32 @@ const api = {
         }
         return byDepositor;
     },
+    // the deposits in rounds fromRound to toRound (both inclusive), by depositor, in newIncentivesByDepositor's
+    // shape, read from the deposit contract's state instead of its logs: for a backfill, a few rounds cost a few
+    // multicalls where logs from the contract's deployment cost thousands of log queries. Nothing is stored
+    // (getIncentivesByRound caches each round it reads, which alerts compare against). null if a read fails.
+    incentivesByDepositorInRounds: async function (fromRound, toRound, platform=0) {
+        noPrisma(platform);
+        var byDepositor = {};
+        for (var network in contracts[platform]) {
+            for (var r = fromRound; r <= toRound; r++) {
+                var deposits = await _getIncentives(network, r, platform);
+                if (deposits == null) return null;
+                for (var g in deposits) {
+                    for (var d of deposits[g]) {
+                        var into = byDepositor[d.depositor] = byDepositor[d.depositor] || {};
+                        into = into[network] = into[network] || {};
+                        into = into[String(r)] = into[String(r)] || {};
+                        (into[g] = into[g] || []).push(String(d.index));
+                    }
+                }
+            }
+        }
+        return byDepositor;
+    },
     // a depositor's deposits, merged into the stored record: the ones in found ({ network: { round: { gauge:
-    // [indexes] } } }, from newIncentivesByDepositor), or else the ones made in the last 200,000 blocks
+    // [indexes] } } }, from newIncentivesByDepositor or incentivesByDepositorInRounds), or else the ones made in
+    // the last 200,000 blocks
     getIncentivesByUser: async function (user, platform=0, found=null) {
         var i, r, g;
         noPrisma(platform);

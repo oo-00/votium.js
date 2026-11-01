@@ -91,6 +91,16 @@ for (const depositor in found) {
 windows. Given `found`, `getIncentivesByUser` reads exactly those deposits however old they are, and scans
 nothing. It returns `null`, and stores nothing, if a read fails.
 
+For a backfill, `incentivesByDepositorInRounds(fromRound, toRound, platform)` (2.2.0) returns the same shape
+for a range of rounds, both ends included, read from the deposit contract's state: a round costs a few
+multicalls, where logs back to the contract's deployment would cost thousands of log queries. It stores
+nothing, unlike `getIncentivesByRound`, whose round cache is what new-deposit alerts compare against. It
+returns `null` if a read fails.
+
+A deposit on a gauge the gauge list no longer has (killed or delisted) is kept in the depositor's record
+as `Unknown (0x1234...)`, as rounds name it (2.2.0; earlier versions left it out), since the depositor may
+still be able to withdraw it.
+
 ## Examples
 
 `examples/roundTable.js` (Curve) and `examples/roundTableFXN.js` print a round as a table;
